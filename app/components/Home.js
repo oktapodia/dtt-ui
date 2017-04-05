@@ -5,6 +5,7 @@ import styles from './Home.css';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import fs from 'fs';
 import os from 'os';
+import * as helper from './Helper.js';
 
 import Download from './Download';
 import Upload from './Upload';
@@ -18,7 +19,10 @@ export default class Home extends Component {
     this.state = {
       selectedTab: 0,
       tokenStatus: '',
-      consoleLog: ''
+      consoleLog: {
+        download: '',
+        upload: '',
+      }
     }
   }
   render() {
@@ -28,9 +32,9 @@ export default class Home extends Component {
         <div style={headStyle}>
           <h3 style={titleStyle}> DTT Desktop</h3>
           <span style={infoStyle}>
-            <a href="#" onClick={this.handleSettings}><i className="fa fa-cog" aria-hidden="true" /></a>
-            <a href="#"> Help </a>
-            <a href="#"> About</a>
+            <a href="#" onClick={this.handleSettings}><i className="fa fa-cog" aria-hidden="true" />Settings</a>
+            {/*<a href="#"> Help </a>
+            <a href="#"> About</a>*/}
           </span>
         </div>
         <Tabs
@@ -43,11 +47,11 @@ export default class Home extends Component {
             <Tab>Upload</Tab>
             <Tab>Token</Tab>
             <Tab style={{ display: "none" }}>Settings</Tab>
-            <Tab>Console</Tab>
+            <Tab>Log</Tab>
           </TabList>
-          <TabPanel><Download handleClearConsoleLog={this.handleClearConsoleLog} handleConsoleLog={this.handleConsoleLog} /></TabPanel>
-          <TabPanel ><Upload /></TabPanel>
-          <TabPanel><Token check={this.handleCheck} /></TabPanel>
+          <TabPanel><Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} /></TabPanel>
+          <TabPanel ><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>
+          <TabPanel><Token check={this.handleTokenCheck} consoleLog={this.state.consoleLog.token} /></TabPanel>
           <TabPanel><Settings /></TabPanel>
           <TabPanel><Console consoleLog={this.state.consoleLog} /></TabPanel>
         </Tabs>
@@ -57,41 +61,22 @@ export default class Home extends Component {
   handleSelect = (index) => this.setState({ selectedTab: index });
   handleToken = () => this.setState({ selectedTab: 2 });
   handleSettings = () => this.setState({ selectedTab: 3 });
-  handleClearConsoleLog = () => this.setState({ consoleLog: this.state.consoleLog = '' })
-  handleConsoleLog = (stderr) => this.setState({ consoleLog: this.state.consoleLog += stderr });
-  handleCheck = () => {
-    var homedir = os.homedir();
-    var isWin = /^win/.test(process.platform);
-    var dir = isWin ? homedir + '\\AppData\\Roaming\\dtt\\' : homedir + '/.dtt/';
-    var prefix = isWin ? dir + 'gdc-client.exe ' : dir + './gdc-client ';
-    const exec = require('child_process').exec;
-
-    var tempDir = isWin ? homedir + '\\AppData\\Local\\Temp' : '/tmp';
-    var script = prefix + 'download 00007ccc-269b-4cd0-a0b1-6e5d700a8e5f -t ' + dir + 'token.txt -d ' + tempDir;
-    if (!fs.existsSync(dir + 'token.txt')) {
-      this.setState({ tokenStatus: 'No Token File' });
-    }
-    else {
-      var cmd = exec(script, (error, stdout, stderr) => {
-        console.log(stderr);
-        console.log('stdout: ' + stdout)
-        if (stderr.includes('403 Client Error: FORBIDDEN')) {
-          this.setState({ tokenStatus: 'Expired or invalid' });
-        }
-        else if (stdout.includes('Successfully downloaded')) {
-          this.setState({ tokenStatus: 'Valid' });
-        }
-        else {
-          this.setState({ tokenStatus: 'Unknown' });
-        }
-        if (error !== null) {
-          console.log('exec error: ' + error);
-        }
-      });
-    }
+  handleClearDownloadConsoleLog = () => this.setState({ consoleLog: { ...this.state.consoleLog, download: '' } });
+  handleClearUploadConsoleLog = () => this.setState({ consoleLog: { ...this.state.consoleLog, upload: '' } });
+  handleDownloadConsoleLog = (stderr) => this.setState({ consoleLog: { ...this.state.consoleLog, download: this.state.consoleLog.download += stderr } });
+  handleUploadConsoleLog = (stderr) => this.setState({ consoleLog: { ...this.state.consoleLog, upload: this.state.consoleLog.upload += stderr } });
+  handleTokenCheck = () => {
+    var tokenObj;
+    helper.checkToken().then((res) => {
+      tokenObj = res
+      this.setState({ tokenStatus: tokenObj.tokenStatus });
+      this.setState({ consoleLog: { ...this.state.consoleLog, token: tokenObj.consoleLog } });
+    });
+  }
+  componentWillMount() {
+    this.handleTokenCheck();
   }
 }
-
 const headStyle = {
   display: "flex",
   flexDirection: "row",

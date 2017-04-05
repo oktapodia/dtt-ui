@@ -1,57 +1,29 @@
 'use strict';
 import React, { Component } from 'react';
-const os = require('os');
-const { shell } = require('electron');
-const { dialog } = require('electron').remote;
-const exec = require('child_process').exec;
-const fs = require('fs');
-var Dropzone = require('react-dropzone');
-
-var homedir = os.homedir();
-var isWin = /^win/.test(process.platform);
-var dir = isWin ? homedir + '\\AppData\\Roaming\\dtt\\' : homedir + '/.dtt/';
-var prefix = isWin ? dir + 'gdc-client.exe ' : dir + './gdc-client ';
+import os from 'os';
+import {shell} from 'electron';
+import Dropzone from 'react-dropzone';
+import * as helper from './Helper.js'
+const {dialog} = require('electron').remote;
 
 export default class Token extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       initialized: false,
-      tokenStatus: "",
       tokenFile: "",
     }
   }
-  componentDidMount() {
-    this.props.check();
-  }
   handleNewToken = () => {
-    fs.access(dir, () => {
-      let readStream = fs.createReadStream(this.state.tokenFile);
+    helper.saveToken(this.state.tokenFile)
+      .then(this.props.check());
 
-      readStream.once('error', (err) => {
-        console.log(err);
-      });
-
-      readStream.once('end', () => {
-        console.log('done copying');
-      });
-      var tokenDest = dir + (isWin ? '\\token.txt' : 'token.txt');
-      console.log(tokenDest);
-      readStream.pipe(fs.createWriteStream(tokenDest));
-      this.props.check();
-      var script = 'chmod 600 ' + dir + 'token.txt';
-      if (!isWin) {
-        var cmd = exec(script, (error, stdout, stderr) => {
-          console.log(stderr);
-        });
-      }
-      else {
-
-      }
-    });
   }
   handleTokenChange = (e) => this.setState({ tokenFile: e.target.value });
-  handleTokenDialog = () => dialog.showOpenDialog({ properties: ['openFile'] }, (fileName) => this.setState({ tokenFile: fileName[0] }));
+  handleTokenDialog = () => dialog.showOpenDialog({ properties: ['openFile'] }, (fileName) => {
+    try { this.setState({ tokenFile: fileName[0] }) }
+    catch (e) { this.setState({ tokenFile: '' }) }
+  });
 
   render() {
     return (
@@ -82,7 +54,7 @@ export default class Token extends React.Component {
         <button onClick={this.handleNewToken}>
           Save Token
         </button>
-        <div>{this.state.tokenStatus}</div>
+        <div>{this.props.consoleLog}</div>
       </div>
     )
   }

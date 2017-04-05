@@ -1,7 +1,29 @@
 import React, { Component } from 'react';
 import fs from 'fs';
 import { getLogDest } from './Helper.js';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+
 export default class Console extends Component {
+  render() {
+    return (
+      < div >
+        <Tabs>
+          <TabList>
+            <Tab>Download</Tab>
+            <Tab>Upload</Tab>
+          </TabList>
+          <TabPanel><ConsoleSection consoleLog={this.props.consoleLog.download} type="download" /></TabPanel>
+          <TabPanel><ConsoleSection consoleLog={this.props.consoleLog.upload} type="upload" /></TabPanel>
+        </Tabs>
+      </div >
+    )
+  }
+
+}
+
+
+
+class ConsoleSection extends Component {
   render() {
     return (<div className="terminalContainer">
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -20,7 +42,5 @@ export default class Console extends Component {
     </div>
     )
   }
-  handleSaveLog = () => {
-    fs.writeFileSync(getLogDest(), this.props.consoleLog);
-  }
+  handleSaveLog = () => helper.saveLog(this.props.type, this.props.log)
 }

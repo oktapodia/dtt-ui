@@ -46,8 +46,8 @@ app.on('ready', async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
-    width: 1024,
-    height: 728
+    width: 750,
+    height: 650
   });
 
   mainWindow.loadURL(`file://${__dirname}/app.html`);
@@ -77,7 +77,7 @@ app.on('ready', async () => {
 
   if (process.platform === 'darwin') {
     template = [{
-      label: 'Electron',
+      label: 'DTT',
       submenu: [{
         label: 'About ElectronReact',
         selector: 'orderFrontStandardAboutPanel:'

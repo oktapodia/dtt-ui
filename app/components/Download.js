@@ -1,18 +1,10 @@
 'use strict';
 import React, { Component } from 'react';
-import os from 'os';
 import Dropzone from 'react-dropzone';
-import fs from 'fs';
 import async from 'async';
 import * as helper from './Helper.js';
-import StopWatch from 'stopwatch-js'
 var exec = require('child_process').exec;
 const { dialog } = require('electron').remote;
-
-var isWin = /^win/.test(process.platform);
-var homedir = os.homedir();
-var dir = isWin ? homedir + '\\AppData\\Roaming\\dtt\\' : homedir + '/.dtt/';
-var prefix = isWin ? dir + 'gdc-client.exe ' : dir + './gdc-client ';
 
 export default class Download extends Component {
   constructor(props) {
@@ -26,6 +18,7 @@ export default class Download extends Component {
       annotations: true,
       uuidStatuses: [],
       downloading: false,
+      statusStr: ''
     };
     this.downloads = [];
   }
@@ -117,13 +110,14 @@ export default class Download extends Component {
             />Annotations<br />
           </div>
         </div>
-        <div className="downloadButtonContainer" style={{ marginLeft: 'auto', marginRight: '11px' }}>
+        <div className="downloadButtonContainer" style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ display: 'flex', marginTop: 'auto', alignSelf: 'flexEnd' }}>{this.state.statusStr}</span>
           <button
             onClick={this.state.downloading ? this.handleStopDownload : this.handleDownload}>
             {this.state.downloading ? 'Stop' : 'Download'}
           </button>
         </div>
-        <div className="tableContainer" style={{ overflowY: "auto", flexGrow: 1, flexShrink: 1, maxHeight: '28vh', }}>
+        <div className="tableContainer" style={{ overflowY: "auto", flexGrow: 1, flexShrink: 1, height: '15em' }}>
           <table style={{ width: '100%' }}>
             <thead>
               <tr>
@@ -165,63 +159,42 @@ export default class Download extends Component {
     helper.killProcess(this.downloads);
     var tempStatusArray = this.state.uuidStatuses;
     tempStatusArray.forEach(obj => { if (obj.status !== 'Downloaded') obj.status = 'Skipped' });
-    this.setState({ uuidStatuses: tempStatusArray });
-
+    this.setState({ uuidStatuses: tempStatusArray, downloading: false });
   }
   handleDownload = () => {
+    this.props.clearLog();
+    this.downloads = [];
     this.setState({ downloading: true });
-    this.props.handleClearConsoleLog();
-
     var relatedFilesStr = this.state.relatedFiles ? '' : ' --no-related-files ';
     var annotationsStr = this.state.annotations ? '' : ' --no-annotations ';
-    var downloadStr = ' -d ' + helper.fixSpace(this.state.downloadFolder) + ' ';
-    var tokenStr = ' -t ' + dir + 'token.txt ';
-    var [prefStr, numDownloads] = helper.getPrefs('d');
-    if (numDownloads > 8) numDownloads = 8;
-    var strList = [relatedFilesStr, annotationsStr, downloadStr, tokenStr, prefStr];
+    var [prefList, numDownloads] = helper.getDownloadPrefs(this.state.downloadFolder);
+    prefList = prefList.concat([relatedFilesStr, annotationsStr])
     var statusObjs = [];
-    if (this.state.isUUID) {
-      var fileIds = this.state.uuidStr.split(/\s+/);
-      helper.requestStatusObjsUUID(fileIds)
-        .then(objs => {
-          statusObjs = objs;
-          this.setState({ uuidStatuses: statusObjs });
-          async.eachLimit(statusObjs, numDownloads, (statusObj, callback) => {
-            setTimeout(null,300);
-            this.spawnDownload(statusObj.uuid, strList, callback);
-          });
-        });
-    }
-    else statusObjs = helper.requestStatusObjsManifest(this.state.manifestFile)
+    var arg = this.state.isUUID ? this.state.uuidStr.split(/\s+/) : this.state.manifestFile;
+
+    helper.requestDownloadStatuses(this.state.isUUID, arg)
       .then(objs => {
         statusObjs = objs;
         this.setState({ uuidStatuses: statusObjs });
         async.eachLimit(statusObjs, numDownloads, (statusObj, callback) => {
-          setTimeout(null,300);
-          this.spawnDownload(statusObj.uuid, strList, callback);
+          if (this.state.downloading) {
+            setTimeout(null, 300);
+            this.spawnDownload(statusObj.uuid, prefList, callback);
+          }
+        }, () => {
+          this.setState({ downloading: false });
+          helper.killProcess(this.downloads);
+
         });
       });
-    var checkStatus = setInterval(() => {
-      var downloadStatus = true;
-      this.state.uuidStatuses.forEach(obj => {
-        if (obj.status !== 'Skipped' && obj.status !== 'Downloaded') downloadStatus = false;
-      });
-      if (downloadStatus) {
-        this.setState({ downloading: false });
-        helper.killProcess(this.downloads);
-        clearInterval(checkStatus);
-      }
-    }, 1000);
   }
-
   spawnDownload = (uuid, strList, callback) => {
-    var time;
-    var timer = null;
-    var script = prefix + 'download ' + uuid;
-    script += strList[2] + strList[1] + strList[0] + strList[3] + strList[4];
+    var time,
+      timer = null,
+      script = helper.prefix + 'download ' + uuid;
+    script += strList[2] + strList[1] + strList[0] + strList[3] + strList[4] + ' -n  1 ';
     console.log(script);
-    if(!this.state.downloading)
-      callback('err')//ends all downloads
+    if (!this.state.downloading) callback('err')//ends all downloads
     var cmd = exec(script, { maxBuffer: 1024 * 1000 }, (error, stdout, stderr) => {
       if (error !== null) {
         console.log('exec error: ' + error);
@@ -229,14 +202,14 @@ export default class Download extends Component {
       }
     });
     var pid = cmd.pid;
-    console.log(pid);
     cmd.stdout.on('data', (data) => {
-      console.log(data);
+      console.log(data)
       var tempStatusArray = this.state.uuidStatuses;
       var file = tempStatusArray.find(x => x.uuid === uuid)
       var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid)
       if (data.includes('100%') && !data.includes('Failed')) {
         file.status = 'Downloaded';
+        this.checkNumOfDownloads();
         callback();
         clearInterval(timer);
         var regVar = /\s(\d+\.\d+\s+(?:kB|MB|GB)\/s)[\s\n\r]+SUMMARY/.exec(data.toString());
@@ -245,28 +218,40 @@ export default class Download extends Component {
       }
       else if (file.status !== 'Skipped') {
         file.status = 'Downloading';
+        this.checkNumOfDownloads();
         if (timer === null) {
           time = new Date().getTime();
           timer = setInterval(() => {
             file.time = '(' + helper.formatTime(new Date().getTime() - time) + ')';
             this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) });
           }, 1000);
-          this.downloads.push({timer: timer, process: pid});
+          this.downloads.push({ timer: timer, process: pid });
         }
       }
     });
     cmd.stderr.on('data', (data) => {
+      console.log(data)
       var tempStatusArray = this.state.uuidStatuses;
       var file = tempStatusArray.find(x => x.uuid === uuid)
       var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid)
       file.status = data.includes('ERROR') ? 'Skipped' : 'Downloading';
-      if (file.status === 'Skipped') {
-        callback();
-        clearInterval(timer);
-      }
-      this.setState({ uuidStatuses: Object.assign(tempStatusArray, { [fileIndex]: file }) })
-      this.props.handleConsoleLog(data);
+      this.checkNumOfDownloads();
+      clearInterval(timer);
+      if (file.status === 'Skipped' && data.includes('Successfully')) callback();
+      this.setState({ uuidStatuses: Object.assign(tempStatusArray, { [fileIndex]: file }) });
+      this.props.appendLog(data);
     });
+  }
+  checkNumOfDownloads = () => {
+    var arr = { 'Downloaded': 0, 'Downloading': 0, 'Not Started': 0, 'Skipped': 0 }
+    console.log(arr, this.state.uuidStatuses)
+    this.state.uuidStatuses.forEach(x => arr[x.status]++)
+    this.setState({
+      statusStr: 'Not Started: ' + arr['Not Started'] +
+      ' Downloading: ' + arr['Downloading'] +
+      ' Downloaded: ' + arr['Downloaded'] +
+      ' Skipped: ' + arr['Skipped']
+    })
   }
 }
 

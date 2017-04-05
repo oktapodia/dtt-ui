@@ -1,16 +1,9 @@
 'use strict';
 import React, { Component } from 'react';
-const os = require('os');
-const { dialog } = require('electron').remote;
-var Dropzone = require('react-dropzone');
+import Dropzone from 'react-dropzone';
+import * as helper from './Helper.js';
+const dialog = require('electron').remote;
 var exec = require('child_process').exec;
-var fixSpace = require('./Helper.js').fixSpace;
-
-
-var isWin = /^win/.test(process.platform);
-var homedir = os.homedir();
-var dir = isWin ? homedir + '\\AppData\\Roaming\\dtt\\' : homedir + '/.dtt/';
-var prefix = isWin ? dir + 'gdc-client.exe ' : dir + './gdc-client ';
 
 export default class Upload extends Component {
   constructor(props) {
@@ -22,36 +15,13 @@ export default class Upload extends Component {
       uuids: '',
       isUUID: true,
       uploadIntention: true,
+      uploading: true,
+      uuidStatuses: [],
+      statusStr: ''
     };
-  }
-  handleIntention = () => {
-    this.setState({ consoleLog: "" });
-    var uploadStr = ' -d ' + this.state.uploadFolder;
-    var script = this.state.isUUID ? './gdc-client upload ' + this.state.uuids + uploadStr : './gdc-client upload -m ' + fixSpace(this.state.manifestFile) + fixSpace(uploadStr);
-    console.log(script);
-    if (!isWin) {
-      var cmd = exec(script, (error, stdout, stderr) => {
-        if (error !== null) {
-          console.log('exec error: ' + error);
-        }
-      });
-      cmd.stdout.on('data', (data) => {
-        this.setState({ consoleLog: this.state.consoleLog + data });
-      });
-    }
-    else {
+    this.uploads = [];
 
-    }
   }
-  handleUploadMethodChange = (e) => this.setState({ isUUID: e.currentTarget.name === 'uRadio' });
-  handleManifestDialog = () => dialog.showOpenDialog({ properties: ['openFile'] }, (fileName) => this.setState({ manifestFile: fileName[0] }));
-  handleSourceDialog = () => dialog.showOpenDialog({ properties: ['openDirectory'] }, (dirName) => this.setState({ uploadFolder: dirName[0] }));
-  handleUUIDChange = (e) => this.setState({ uuids: e.target.value });
-  handleResetManifestFile = () => this.setState({ manifestFile: "" });
-  handleResetUploadFolder = () => this.setState({ uploadFolder: "" });
-  handleManifestChange = (e) => this.setState({ manifestFile: e.target.value });
-  handleSourceChange = (e) => this.setState({ uploadFolder: e.target.value });
-  handleIntentionChange = (e) => this.setState({ uploadIntention: e.currentTarget.name === 'uploadRadio' });
 
   render() {
     return (
@@ -139,9 +109,56 @@ export default class Upload extends Component {
             checked={!this.state.uploadIntention}
             onChange={this.handleIntentionChange}
           />Delete &nbsp;
-          <button onClick={this.handleIntention}>Submit</button>
+          <button onClick={this.handleUpload}>Submit</button>
         </div>
       </div>)
+  }
+
+  handleUploadMethodChange = (e) => this.setState({ isUUID: e.currentTarget.name === 'uRadio' });
+  handleUUIDChange = (e) => this.setState({ uuids: e.target.value });
+  handleResetManifestFile = () => this.setState({ manifestFile: "" });
+  handleResetUploadFolder = () => this.setState({ uploadFolder: "" });
+  handleManifestChange = (e) => this.setState({ manifestFile: e.target.value });
+  handleSourceChange = (e) => this.setState({ uploadFolder: e.target.value });
+  handleIntentionChange = (e) => this.setState({ uploadIntention: e.currentTarget.name === 'uploadRadio' });
+  handleManifestDialog = () => dialog.showOpenDialog({ properties: ['openFile'] }, (fileName) => {
+    try { this.setState({ manifestFile: fileName[0] }) }
+    catch (e) { this.setState({ manifestFile: '' }) }
+  });
+  handleSourceDialog = () => dialog.showOpenDialog({ properties: ['openDirectory'] }, (dirName) => {
+    try { this.setState({ uploadFolder: dirName[0] }) }
+    catch (e) { this.setState({ uploadFolder: '' }) }
+  });
+  handleUpload = () => {
+    this.props.clearLog();
+    this.uploads = [];
+    this.setState({ uploading: true });
+    var [prefList, numUploads] = helper.getUploadPrefs(this.state.uploadFolder);
+    var deleteStr = this.state.uploadIntention ? '' : ' --delete ';
+    prefList = prefList.concat(deleteStr);
+    var statusObjs = [];
+    var arg = this.state.isUUID ? this.state.uuidStr.split(/\s+/) : this.state.manifestFile;
+
+    helper.requestUploadStatuses(this.state.isUUID, arg)
+      .then(objs => {
+        statusObjs = objs;
+        this.setState({ uuidStatuses: statusObjs });
+        async.eachLimit(statusObjs, numDownloads, (statusObj, callback) => {
+          if (this.state.uploading) {
+            setTimeout(null, 300);
+            this.spawnUpload(statusObj.uuid, prefList, callback);
+          }
+        }, () => {
+          this.setState({ uploading: false });
+          helper.killProcess(this.uploads);
+        });
+      });
+  }
+  spawnUpload = (uuid, strList, callback) => {
+    var time,
+      timer = null,
+      script = helper.prefix + 'upload ' + uuid;
+    script += strList[2] + strList[1] + strList[0] + strList[3] + strList[4] + ' -n  1 '
   }
 }
 const mainStyle = {
