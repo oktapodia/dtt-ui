@@ -36,21 +36,28 @@ export var getDownloadPrefs = (downloadFolder) => {
 
 }
 
-export var requestDownloadStatuses = (isUUID, arg) => {
+export var requestDownloadStatuses = (uuids, manifest) => {
 
-  if (isUUID) {
-    return Promise.all(arg.filter(id => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)).map(id => {
-      return axios.get('https://api.gdc.cancer.gov/v0/files/' + id + '?expand=metadata_files&fields=file_size')
-        .then(res => {
-          return { uuid: id, status: 'Not Started', time: '', size: formatBytes(res.data.data.file_size), speed: '' };
-        })
-    }));
-  }
-  else {
-    var fileContent = fs.readFileSync(arg, 'utf8');
-    var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
-    return Promise.all(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
-  }
+  var statusObjs = [];
+
+  return Promise.all(uuids.filter(id => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)).map(id => {
+    return axios.get('https://api.gdc.cancer.gov/v0/files/' + id + '?expand=metadata_files&fields=file_size')
+      .then(res => {
+        return { uuid: id, status: 'Not Started', time: '', size: formatBytes(res.data.data.file_size), speed: '' };
+      })
+  }))
+    .then(objs => {
+      console.log(objs)
+      statusObjs = objs;
+      var fileContent = fs.readFileSync(manifest, 'utf8');
+      var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
+      return statusObjs.concat(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
+    });
+
+
+  // var fileContent = fs.readFileSync(arg, 'utf8');
+  // var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
+  // return Promise.all(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
 }
 
 

@@ -46,10 +46,10 @@ app.on('ready', async () => {
 
   mainWindow = new BrowserWindow({
     show: false,
-    width: 750,
-    height: 650
+    width: 950,
+    height: 540
   });
-
+  // mainWindow.setResizable(false);
   mainWindow.loadURL(`file://${__dirname}/app.html`);
 
   mainWindow.webContents.on('did-finish-load', () => {

@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import Dropzone from 'react-dropzone';
 import async from 'async';
 import * as helper from './Helper.js';
+import styles from './Download.css';
 var exec = require('child_process').exec;
 const { dialog } = require('electron').remote;
 
@@ -13,7 +14,6 @@ export default class Download extends Component {
       manifestFile: '',
       downloadFolder: '',
       uuidStr: '',
-      isUUID: true,
       relatedFiles: true,
       annotations: true,
       uuidStatuses: [],
@@ -25,7 +25,101 @@ export default class Download extends Component {
 
   render() {
     return (
-      <div className="downloadMainContainer" style={mainStyle}>
+      <div>
+        <div id="downloadOptionContainer" style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+          <div>
+            <Dropzone
+              style={dropzoneStyle}
+              onDrop={(acceptedFiles, rejectedFiles) => { this.setState({ manifestFile: acceptedFiles[0].path }); acceptedFiles = [] }}
+              multiple={false}
+              disableClick={true}
+            >
+              <div>Drag or browse manifest file</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <button onClick={this.handleManifestDialog}><i className="fa fa-plus" aria-hidden="true" /></button>
+                <textarea
+                  rows="1"
+                  cols="25"
+                  id="manifestLocation"
+                  value={this.state.manifestFile}
+                  onChange={this.handleManifestChange}
+                  style={textAreaStyle}
+                />
+              </div>
+            </Dropzone>
+          </div>
+          <div>
+            <textarea
+              rows="4"
+              cols="38"
+              placeholder="UUID(s)"
+              style={{ resize: 'none' }}
+              onChange={this.handleUUIDChange}>
+            </textarea>
+          </div>
+          <div>
+            <Dropzone
+              style={dropzoneStyle}
+              onDrop={(acceptedFiles, rejectedFiles) => { this.setState({ downloadFolder: acceptedFiles[0].path }); acceptedFiles = [] }}
+              multiple={false}
+              disableClick={true}
+            >
+              <div>Drag or browse destination folder</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <button onClick={this.handleDestDialog}><i className="fa fa-plus" aria-hidden="true" /></button>
+                <textarea
+                  rows="1"
+                  cols="25"
+                  id="destLocation"
+                  value={this.state.downloadFolder}
+                  onChange={this.handleDownloadChange}
+                  style={textAreaStyle}
+                />
+              </div>
+            </Dropzone>
+          </div>
+          <div>
+            <div>
+              <input
+                type="checkbox"
+                name="relatedFilesCheckBox"
+                onChange={this.handleCheckRelatedFiles}
+                checked={this.state.relatedFiles}
+              />Related Files<br />
+              <input
+                type="checkbox"
+                name="annotationsCheckBox"
+                onChange={this.handleCheckAnnotations}
+                checked={this.state.annotations}
+              />Annotations
+            </div>
+            <button
+              onClick={this.state.downloading ? this.handleStopDownload : this.handleDownload}>
+              {this.state.downloading ? 'Stop' : 'Download'}
+            </button>
+          </div>
+        </div>
+        <br />
+        <div className="tableContainer" style={{border: 'solid 1px', height: '300px', overflow: 'auto'}}>
+            <div style={{ borderBottom: '1px solid', display: 'flex', justifyContent: 'space-around' }}>
+              <span>UUID</span>
+              <span>Size</span>
+              <span>Status</span>
+              <span>Speed</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column'}}>
+              {this.state.uuidStatuses.map(x =>
+                <div style={{ tableLayout: 'fixed', display: 'flex', flexDirection: 'row', paddingBottom: '5px' }} key={x.uuid}>
+                  <span style={{width:'25%', textAlign: 'center'}}>{x.uuid}</span>
+                  <span style={{width:'25%', textAlign: 'center'}}>{x.size}</span>
+                  <span style={{width:'25%', textAlign: 'center'}}>{x.status} {x.time}</span>
+                  <span style={{width:'25%', textAlign: 'center'}}>{x.speed}</span>
+                </div>
+              )}
+            </div>
+        </div>
+      </div>
+      /*<div className="downloadMainContainer" style={mainStyle}>
         <div className="downloadFileContainer" style={fileStyle}>
           <div className="downloadInfoContainer" style={selectorStyle}>
             1. Select the files that you want to download:
@@ -139,9 +233,8 @@ export default class Download extends Component {
             </tbody>
           </table>
         </div>
-      </div>)
+      </div>)*/)
   }
-  handleDownloadMethodChange = (e) => this.setState({ isUUID: e.currentTarget.name === 'uuidRadio' });
   handleUUIDChange = (e) => this.setState({ uuidStr: e.target.value });
   handleResetManifestFile = () => this.setState({ manifestFile: '' });
   handleResetDownloadFolder = () => this.setState({ downloadFolder: '' });
@@ -170,11 +263,11 @@ export default class Download extends Component {
     var [prefList, numDownloads] = helper.getDownloadPrefs(this.state.downloadFolder);
     prefList = prefList.concat([relatedFilesStr, annotationsStr])
     var statusObjs = [];
-    var arg = this.state.isUUID ? this.state.uuidStr.split(/\s+/) : this.state.manifestFile;
 
-    helper.requestDownloadStatuses(this.state.isUUID, arg)
+    helper.requestDownloadStatuses(this.state.uuidStr.split(/\s+/), this.state.manifestFile)
       .then(objs => {
         statusObjs = objs;
+        console.log(objs);
         this.setState({ uuidStatuses: statusObjs });
         async.eachLimit(statusObjs, numDownloads, (statusObj, callback) => {
           if (this.state.downloading) {
@@ -184,10 +277,10 @@ export default class Download extends Component {
         }, () => {
           this.setState({ downloading: false });
           helper.killProcess(this.downloads);
-
         });
       });
   }
+
   spawnDownload = (uuid, strList, callback) => {
     var time,
       timer = null,
@@ -244,7 +337,6 @@ export default class Download extends Component {
   }
   checkNumOfDownloads = () => {
     var arr = { 'Downloaded': 0, 'Downloading': 0, 'Not Started': 0, 'Skipped': 0 }
-    console.log(arr, this.state.uuidStatuses)
     this.state.uuidStatuses.forEach(x => arr[x.status]++)
     this.setState({
       statusStr: 'Not Started: ' + arr['Not Started'] +
@@ -284,9 +376,8 @@ const optionStyle = {
 
 
 const dropzoneStyle = {
-  width: '240px',
-  height: '100px',
+  display: 'inline-block',
   borderRadius: '4px',
   border: 'dashed 2px lightgrey',
-  padding: '4px',
+  padding: '10px',
 }

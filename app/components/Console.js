@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import fs from 'fs';
-import { getLogDest } from './Helper.js';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import * as helper from './Helper.js';
 
 export default class Console extends Component {
   render() {
@@ -28,7 +28,7 @@ class ConsoleSection extends Component {
     return (<div className="terminalContainer">
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <textarea disabled
-          rows="30"
+          rows="25"
           style={{
             display: 'flex',
             resize: 'none',
@@ -42,5 +42,5 @@ class ConsoleSection extends Component {
     </div>
     )
   }
-  handleSaveLog = () => helper.saveLog(this.props.type, this.props.log)
+  handleSaveLog = () => helper.saveLog(this.props.type, this.props.consoleLog)
 }

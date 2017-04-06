@@ -1,0 +1,35 @@
+table {
+    width: 100%;
+    overflow-y:scroll;
+    border: solid 1px;
+    table-layout: fixed;
+}
+    
+
+thead, tbody, tr, td, th {  display: block; }
+#tableData {
+    width: 25%;
+    text-align: center;
+    display: inline-block;
+}
+tr:after {
+    content: ' ';
+    display: block;
+    visibility: hidden;
+    clear: both;
+}
+
+thead th {
+    border-bottom: solid 1px;
+}
+
+tbody {
+    height: 150px;
+    overflow-y: auto;
+}
+
+tbody td, thead th {
+    text-align: center;
+    width: 23%;
+    float: left;
+}

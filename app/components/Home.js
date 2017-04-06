@@ -1,10 +1,7 @@
-// @flow
 'use strict';
 import React, { Component } from 'react';
 import styles from './Home.css';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import fs from 'fs';
-import os from 'os';
 import * as helper from './Helper.js';
 
 import Download from './Download';
