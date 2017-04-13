@@ -21,10 +21,8 @@ export var getDownloadPrefs = (downloadFolder) => {
     if (sectionKey !== 'uploadParams') {
       var section = prefs.parameters[sectionKey]
       for (var obj in section) {
-        if (obj === 'numClientCons') {
-          numClientCons = parseInt(section[obj]);
-        }
-        else if (section[obj] !== false) prefStr += section[obj]
+        if (obj !== 'numClientCons' && section[obj] !== false)
+          prefStr += section[obj]
       }
     }
   }
@@ -32,14 +30,12 @@ export var getDownloadPrefs = (downloadFolder) => {
   var downloadStr = ' -d ' + fixSpace(downloadFolder) + ' ';
   var tokenStr = ' -t ' + dir + 'token.txt ';
   var strList = [downloadStr, tokenStr, prefStr];
-  return [strList, numClientCons];
-
+  return strList;
 }
 
-export var requestDownloadStatuses = (uuids, manifest) => {
 
+export var requestDownloadStatuses = (uuids, manifests) => {
   var statusObjs = [];
-
   return Promise.all(uuids.filter(id => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)).map(id => {
     return axios.get('https://api.gdc.cancer.gov/v0/files/' + id + '?expand=metadata_files&fields=file_size')
       .then(res => {
@@ -47,17 +43,17 @@ export var requestDownloadStatuses = (uuids, manifest) => {
       })
   }))
     .then(objs => {
-      console.log(objs)
       statusObjs = objs;
-      var fileContent = fs.readFileSync(manifest, 'utf8');
-      var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
-      return statusObjs.concat(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
+      try {
+        manifests.forEach(manifest => {
+          var fileContent = fs.readFileSync(manifest, 'utf8');
+          var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
+          statusObjs = statusObjs.concat(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
+        })
+      }
+      catch (e) { console.log(e) };
+      return statusObjs;
     });
-
-
-  // var fileContent = fs.readFileSync(arg, 'utf8');
-  // var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
-  // return Promise.all(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
 }
 
 
@@ -158,13 +154,23 @@ export var saveToken = (tokenFile) => {
 }
 
 //////////////////////Utility Functions///////////////////////
-export var killProcess = (processes) => {
-  processes.forEach(obj => {
-    clearInterval(obj.timer);
+export var getClientCons = () => {
+  var obj = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));
+  return parseInt(obj.parameters.bothParams.numClientCons);
+}
+
+export var killProcesses = (processes) => {
+  console.log(processes);
+  processes.forEach(process => killProcess(process))
+}
+
+export var killProcess = (process) => {
+  try {
+    clearInterval(process.timer);
     if (isWin) {
     }
     else {
-      exec('pkill -TERM -P ' + obj.process, { maxBuffer: 1024 * 1000 }, (error, stdout, stderr) => {
+      exec('pkill -TERM -P ' + process.pid, { maxBuffer: 1024 * 1000 }, (error, stdout, stderr) => {
         if (error !== null) {
           console.log('exec error: ' + error);
           console.log(stderr);
@@ -172,7 +178,7 @@ export var killProcess = (processes) => {
         }
       });
     }
-  })
+  }catch (e) { }
 }
 export var saveLog = (type, log) => {
   var prefs = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));

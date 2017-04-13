@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import styles from './Home.css';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import * as helper from './Helper.js';
+var remote = require('electron').remote;
 
 import Download from './Download';
 import Upload from './Upload';
@@ -25,11 +26,11 @@ export default class Home extends Component {
   render() {
     return (
       <div>
-        <span onClick={this.handleToken} style={{ display: 'flex', margin: '2px 8px', justifyContent: 'flex-end' }}>Token Status: {this.state.tokenStatus}</span>
         <div style={headStyle}>
           <h3 style={titleStyle}> DTT Desktop</h3>
           <span style={infoStyle}>
-            <a href="#" onClick={this.handleSettings}><i className="fa fa-cog" aria-hidden="true" />Settings</a>
+            <div onClick={this.handleToken}>Token Status: {this.state.tokenStatus}</div>
+            <a href="#" onClick={this.handleSettings} style={{display:'flex', justifyContent: 'flex-end'}}><i className="fa fa-cog" aria-hidden="true" />Settings</a>
             {/*<a href="#"> Help </a>
             <a href="#"> About</a>*/}
           </span>
@@ -40,24 +41,24 @@ export default class Home extends Component {
           selectedIndex={this.state.selectedTab}
         >
           <TabList>
-            <Tab>Download</Tab>
-            <Tab>Upload</Tab>
-            <Tab>Token</Tab>
+            <Tab >Download</Tab>
+            <Tab >Upload</Tab>
+            <Tab >Token</Tab>
+            <Tab >Log</Tab>
             <Tab style={{ display: "none" }}>Settings</Tab>
-            <Tab>Log</Tab>
           </TabList>
           <TabPanel><Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} /></TabPanel>
-          <TabPanel ><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>
+          <TabPanel><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>
           <TabPanel><Token check={this.handleTokenCheck} consoleLog={this.state.consoleLog.token} /></TabPanel>
-          <TabPanel><Settings /></TabPanel>
           <TabPanel><Console consoleLog={this.state.consoleLog} /></TabPanel>
+          <TabPanel><Settings /></TabPanel>
         </Tabs>
       </div >
     );
   }
   handleSelect = (index) => this.setState({ selectedTab: index });
-  handleToken = () => this.setState({ selectedTab: 2 });
-  handleSettings = () => this.setState({ selectedTab: 3 });
+  handleToken = () => this.handleSelect(2);
+  handleSettings = () => this.handleSelect(4);
   handleClearDownloadConsoleLog = () => this.setState({ consoleLog: { ...this.state.consoleLog, download: '' } });
   handleClearUploadConsoleLog = () => this.setState({ consoleLog: { ...this.state.consoleLog, upload: '' } });
   handleDownloadConsoleLog = (stderr) => this.setState({ consoleLog: { ...this.state.consoleLog, download: this.state.consoleLog.download += stderr } });
@@ -65,7 +66,7 @@ export default class Home extends Component {
   handleTokenCheck = () => {
     var tokenObj;
     helper.checkToken().then((res) => {
-      tokenObj = res
+      tokenObj = res;
       this.setState({ tokenStatus: tokenObj.tokenStatus });
       this.setState({ consoleLog: { ...this.state.consoleLog, token: tokenObj.consoleLog } });
     });
@@ -81,11 +82,11 @@ const headStyle = {
 }
 
 const titleStyle = {
-  margin: "15px 5px 15px 5px",
-  fontSize: '24px'
+  margin: '5px',
+  fontSize: '24px',
+  alignSelf: 'center'
 }
 
 const infoStyle = {
   margin: "15px 5px 15px 5px",
-  alignSelf: "center"
 }
