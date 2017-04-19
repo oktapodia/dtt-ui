@@ -13,46 +13,65 @@ export var dir = isWin ? homedir + '\\AppData\\Roaming\\dtt\\' : homedir + '/.dt
 export var prefix = isWin ? dir + 'gdc-client.exe ' : dir + './gdc-client ';
 
 //////////////////////Download Functions/////////////////////////
-export var getDownloadPrefs = (downloadFolder) => {
+export var getDownloadPrefs = () => {
   var prefStr = '';
   var numClientCons = 0;
   var prefs = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));
-  for (var sectionKey in prefs.parameters) {
+  // for (var sectionKey in prefs.parameters) {
+  //   if (sectionKey !== 'uploadParams') {
+  //     var section = prefs.parameters[sectionKey]
+  //     for (var obj in section) {
+  //       if (obj !== 'numClientCons' && section[obj] !== false)
+  //         prefStr += section[obj]
+  //     }
+  //   }
+  // }
+  prefStr = Object.keys(prefs.parameters).reduce((str, sectionKey) => {
     if (sectionKey !== 'uploadParams') {
-      var section = prefs.parameters[sectionKey]
-      for (var obj in section) {
-        if (obj !== 'numClientCons' && section[obj] !== false)
-          prefStr += section[obj]
-      }
+      var section = prefs.parameters[sectionKey];
+      return Object.keys(section).reduce((str, obj) => {
+        if (obj !== 'numClientCons' && section[obj] !== false) {
+          return str + section[obj];
+        }
+        return str;
+      }, str)
     }
-  }
+    return str;
+  }, '')
+  console.log(prefStr);
   if (numClientCons > 6) numClientCons = 6;
-  var downloadStr = ' -d ' + fixSpace(downloadFolder) + ' ';
   var tokenStr = ' -t ' + dir + 'token.txt ';
-  var strList = [downloadStr, tokenStr, prefStr];
+  var strList = [tokenStr, prefStr];
   return strList;
 }
 
 
 export var requestDownloadStatuses = (uuids, manifests) => {
-  var statusObjs = [];
-  return Promise.all(uuids.filter(id => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)).map(id => {
+  var validUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return Promise.all(uuids.filter(id => validUUID.test(id)).map(id => {
     return axios.get('https://api.gdc.cancer.gov/v0/files/' + id + '?expand=metadata_files&fields=file_size')
       .then(res => {
         return { uuid: id, status: 'Not Started', time: '', size: formatBytes(res.data.data.file_size), speed: '' };
       })
   }))
     .then(objs => {
-      statusObjs = objs;
+      var statusObjs = objs;
+      console.log(objs);
       try {
-        manifests.forEach(manifest => {
-          var fileContent = fs.readFileSync(manifest, 'utf8');
-          var fileInfo = fileContent.split('\n').slice(1, Infinity).map(x => x.split('\t'));
-          statusObjs = statusObjs.concat(fileInfo.map(x => ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' })));
-        })
-      }
-      catch (e) { console.log(e) };
-      return statusObjs;
+        return Promise.all(manifests.map(manifest => {
+          return new Promise((resolve) => {
+            fs.readFile(manifest, 'utf8', (err, content) => {
+              var fileInfo = content.split('\n').slice(1).map(x => x.split('\t'));
+              const rows = fileInfo.map(x =>
+                ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' }))
+              resolve(rows);
+            });
+          });
+        }))
+          .then((rows) => {
+            return rows.reduce((acc, row) => acc.concat(row), statusObjs);
+          });
+      } catch(e) {return statusObjs}
     });
 }
 
@@ -67,7 +86,7 @@ export var getUploadPrefs = (uploadFolder) => {
       var section = prefs.parameters[sectionKey]
       for (var obj in section) {
         if (obj === 'numClientCons') {
-          numClientCons = parseInt(section[obj]);
+          numClientCons = parseInt(section[obj], 10);
         }
         else if (section[obj] !== false) prefStr += section[obj]
       }
@@ -102,7 +121,7 @@ export var checkToken = () => {
   var tempDir = isWin ? homedir + '\\AppData\\Local\\Temp' : '/tmp';
   var script = prefix + 'download 00007ccc-269b-4cd0-a0b1-6e5d700a8e5f -t ' + dir + 'token.txt -d ' + tempDir;
   if (!fs.existsSync(dir + 'token.txt')) {
-    return ({ consoleLog: '', tokenStatus: 'No Token File' });
+    return new Promise((resolve) => resolve({ consoleLog: '', tokenStatus: 'No Token File' }));
   }
   else {
     return new Promise((resolve, reject) => {
@@ -127,36 +146,82 @@ export var checkToken = () => {
 }
 
 export var saveToken = (tokenFile) => {
-  return new Promise(() => {
+  return new Promise((resolve, reject) => {
     fs.access(dir, () => {
       var readStream = fs.createReadStream(tokenFile);
-
       readStream.once('error', (err) => {
         console.log(err);
+        reject(err)
       });
 
       readStream.once('end', () => {
         console.log('done copying');
       });
       var tokenDest = dir + (isWin ? '\\token.txt' : 'token.txt');
-      readStream.pipe(fs.createWriteStream(tokenDest));
-      if (!isWin) {
-        var script = 'chmod 600 ' + dir + 'token.txt';
-        var cmd = exec(script, (error, stdout, stderr) => {
-          console.log(stderr);
-        });
-      }
-      else {
+      return new Promise((res) => res(readStream.pipe(fs.createWriteStream(tokenDest))))
+        .then(() => {
+          if (!isWin) {
+            var script = 'chmod 600 ' + dir + 'token.txt';
+            var cmd = exec(script, (error, stdout, stderr) => {
+              console.log(stderr);
+            });
+          }
+          else {
 
-      }
+          }
+          resolve();
+        });
     })
   });
 }
+//////////////////////Settings Functions//////////////////////
+export var saveSettings = (defaultSettings, state) => {
+  var obj = Object.keys(state).length === 0 ? defaultSettings : state;
+  var params = {
+    // connectionsParams: {
+    //   server: obj.server !== defaultSettings.server ? ' -s ' + obj.server : false,
+    //   port: obj.port !== defaultSettings.port ? ' -P ' + obj.port : false
+    // },
+    bothParams: {
+      numClientCons: obj.numClientCons <= 6 ? obj.numClientCons : 3,
+      // createLogFile: obj.createLogFile  ? ' --log-file ' + fixSpace(obj.logDestination) : false,
+      debugLogging: obj.debugLogging ? ' --debug' : false,
+      verboseLogging: obj.verboseLogging ? ' --v' : false
+    },
+    downloadParams: {
+      downloadDestination: ' -d ' + fixSpace(obj.downloadDestination),
+      blockSize: obj.blockSize !== defaultSettings.blockSize ?
+        ' --http-chunk-size ' + obj.blockSize : false,
 
+      saveInterval: obj.saveInterval !== defaultSettings.saveInterval ?
+        ' --save-interval ' + obj.saveInterval : false,
+
+      calcInSegAndCheckMd5: !obj.calcInSegAndCheckMd5 ? ' --no-segment-md5sums' : false,
+      checkMd5: !obj.checkMd5 ? ' --no-file-md5sum' : false,
+      // autoRetry: !obj.autoRetry ? ' --no-auto-retry' : false,
+      // numRetrys: obj.autoRetry ? ' --retry-amount ' + obj.numRetrys : false,
+      // retryInterval: obj.autoRetry ? ' --wait-time ' + obj.retryInterval : false
+    },
+    uploadParams: {
+      multipartUpload: !obj.multipartUpload ? ' --disable-multipart' : false,
+      partSize: obj.multipartUpload ? '-ps ' + partSize : false
+    }
+  }
+
+  var settings = obj;
+
+  var prefs = {
+    parameters: params,
+    settings: settings
+  };
+  var yamlObj = yaml.dump(prefs);
+  fs.writeFileSync(dir + 'prefs.yml', yamlObj);
+}
 //////////////////////Utility Functions///////////////////////
 export var getClientCons = () => {
   var obj = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));
-  return parseInt(obj.parameters.bothParams.numClientCons);
+  var cons = parseInt(obj.parameters.bothParams.numClientCons, 10);
+  return cons > 6 && cons < 1 ? 6 : cons;
 }
 
 export var killProcesses = (processes) => {
@@ -178,7 +243,7 @@ export var killProcess = (process) => {
         }
       });
     }
-  }catch (e) { }
+  } catch (e) { }
 }
 export var saveLog = (type, log) => {
   var prefs = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));

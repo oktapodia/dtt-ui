@@ -167,9 +167,10 @@
     "axios": "^0.15.3",
     "electron-debug": "^1.1.0",
     "font-awesome": "^4.7.0",
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2",
+    "react": "^15.5.4",
+    "react-dom": "^15.5.4",
     "react-dropzone": "^3.10.0",
+    "react-modal": "^1.7.6",
     "react-redux": "^5.0.2",
     "react-router": "^3.0.2",
     "react-router-redux": "^4.0.7",
@@ -177,7 +178,8 @@
     "redux": "^3.6.0",
     "redux-thunk": "^2.2.0",
     "source-map-support": "^0.4.10",
-    "stopwatch-js": "^0.0.1"
+    "stopwatch-js": "^0.0.1",
+    "styled-components": "^1.4.5"
   },
   "devEngines": {
     "node": ">=6.x",
