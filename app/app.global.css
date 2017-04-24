@@ -11,6 +11,7 @@ body {
   font-family: "franklin_gothic_fsbook", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 12px;
   overflow-y: hidden;
+  overflow-x: hidden;
 }
 a {
   opacity: .75;
@@ -43,6 +44,12 @@ a:hover {
   height:100vh
 }
 
+.secondaryButton {
+  color:rgba(44, 123, 135,1);
+  background-color: white;
+  border-radius: 2px;
+  border: rgba(44, 123, 135,1) solid 1px;
+}
 button {
   background-color:rgba(44, 123, 135,1);
   border-radius: 2px;

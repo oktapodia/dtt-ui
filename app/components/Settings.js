@@ -25,21 +25,27 @@ export default class Settings extends React.Component {
       numRetrys: '5',
       retryInterval: '5',
       multipartUpload: false,
-      partSize: '1073741824'
+      partSize: '1073741824',
+      showAdvancedSettings: false,
     }
     this.state = {}
   }
   render() {
     return (
-      <div className="mainSettings">
-        <div>
-          <h1>Settings</h1>
+      <div >
+        <div className="mainSettings">
           <div>
-            <button onClick={this.handleDefaultSettings}>Reset to Default Settings</button>
-            <button onClick={this.handleSaveSettings}>Save Settings</button>
+            <h1>Settings</h1>
+            <div>
+              <button onClick={this.handleDefaultSettings}>Reset to Default Settings</button>
+              <button onClick={this.handleSaveSettings}>Save Settings</button>
+              <button onClick={() =>
+              { this.setState({ showAdvancedSettings: !this.state.showAdvancedSettings }) }}>
+                {this.state.showAdvancedSettings ? 'Hide ' : 'Show '} Advanced Settings
+            </button>
+            </div>
           </div>
-        </div>
-        {/*<div id="connectionSettings">
+          {/*<div id="connectionSettings">
           <div style={{ display: "flex", flexDirection: "row" }}>
             <div>Server</div>
             &nbsp;
@@ -63,154 +69,175 @@ export default class Settings extends React.Component {
             />
           </div>
         </div>*/}
-        <div id="uploadDownloadSettings">
-          <h3>Parameters for Download and Upload</h3>
-          <div style={{ display: "flex", flexDirection: "row" }}>
-            <div>Number of Client Connections (max 6)</div>
-            &nbsp;
+          <div>
+            <div id="uploadDownloadSettings">
+              <h3>Parameters for Download and Upload</h3>
+              <div style={{ display: "flex", flexDirection: "row" }}>
+                <div>Number of Client Connections (max 6)</div>
+                &nbsp;
             <textarea
-              style={textAreaStyle}
-              rows="1"
-              cols="20"
-              value={this.state.numClientCons}
-              onChange={this.handleNumClientCons}
-            />
-          </div>
-          <div>
-            <div style={{ display: "flex", flexDirection: "row" }}>
-              <input
-                type="checkbox"
-                checked={this.state.createLogFile}
-                onChange={this.handleLogDialog}
-              />Create Log File
-              <textarea
-                style={textAreaStyle}
-                rows="1"
-                cols="20"
-                value={this.state.logDestination}
-                onChange={this.handleLogDestination}
-              />
-              <button onClick={this.handleLogDestDialog}>Browse</button>
-            </div>
-          </div>
-          <div>
-            <input
-              type="checkbox"
-              checked={this.state.debugLogging}
-              onChange={this.handleDebugLogging}
-            />Debug Logging
-          </div>
-          <div>
-            <input
-              type="checkbox"
-              checked={this.state.verboseLogging}
-              onChange={this.handleVerboseLogging}
-            />Verbose Logging
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "row" }}>
-          <div id="downloadSettings">
-            <h3>Parameters for Download</h3>
-            <div>
-              <div>Destination folder</div>
-              <textarea
-                rows="1"
-                cols="20"
-                id="destLocation"
-                value={this.state.downloadDestination}
-                onChange={this.handleDownloadChange}
-                style={textAreaStyle}
-              />
-              <button onClick={this.handleDownloadDialog}>Browse</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "row" }}>
-              <div>Block Size</div>
-              &nbsp;
-              <textarea
-                style={textAreaStyle}
-                rows="1"
-                cols="20"
-                value={this.state.blockSize}
-                onChange={this.handleBlockSize}
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "row" }}>
-              <div>Save Interval</div>
-              &nbsp;
-              <textarea
-                style={textAreaStyle}
-                rows="1"
-                cols="20"
-                value={this.state.saveInterval}
-                onChange={this.handleSaveInterval}
-              />
+                  style={textAreaStyle}
+                  rows="1"
+                  cols="20"
+                  value={this.state.numClientCons}
+                  onChange={this.handleNumClientCons}
+                />
+              </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div>
-                <input
-                  type="checkbox"
-                  checked={this.state.calcInSegAndCheckMd5}
-                  onChange={this.handleInSegAndMd5}
-                />Calculate Inbound Segment and check Md5sum on Restart
+              <div id="downloadSettings">
+                <h3>Parameters for Download</h3>
+                <div>
+                  <div>Destination folder</div>
+                  <textarea
+                    rows="1"
+                    cols="20"
+                    id="destLocation"
+                    value={this.state.downloadDestination}
+                    onChange={this.handleDownloadChange}
+                    style={textAreaStyle}
+                  />
+                  <button onClick={this.handleDownloadDialog}>Browse</button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div>
+                    <input
+                      type="checkbox"
+                      checked={this.state.calcInSegAndCheckMd5}
+                      onChange={this.handleInSegAndMd5}
+                    />Calculate Inbound Segment and check Md5sum on Restart
               </div>
-              <div>
-                <input
-                  type="checkbox"
-                  checked={this.state.checkMd5}
-                  onChange={this.handleMd5}
-                />Check Md5sum after Download
+                  <div>
+                    <input
+                      type="checkbox"
+                      checked={this.state.checkMd5}
+                      onChange={this.handleMd5}
+                    />Check Md5sum after Download
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <div>Retries after Downloads</div>
-              <div>
-                <input
-                  type="checkbox"
-                  checked={this.state.autoRetry}
-                  onChange={this.handleAutoRetry}
-                />Auto Retry
-              </div>
-              <div>
-                <textarea
-                  style={textAreaStyle}
-                  rows="1"
-                  cols="2"
-                  value={this.state.numRetrys}
-                  onChange={this.handleNumRetrys}
-                />Retry(s)
-              </div>
-              <div>
-                <textarea
-                  style={textAreaStyle}
-                  rows="1"
-                  cols="2"
-                  value={this.state.retryInterval}
-                  onChange={this.handleRetryInterval}
-                />Seconds between Retrys
-              </div>
+              &nbsp;&nbsp;&nbsp;
             </div>
           </div>
-          &nbsp;&nbsp;&nbsp;
-          <div>
-            <h3>Parameters for Upload</h3>
-            <div>
-              <input
-                type="checkbox"
-                checked={this.state.multipartUpload}
-                onChange={this.handleMultipartUpload}
-              />Enable Multipart Upload
+
+
+          <div className="advancedSettings"
+            style={this.state.showAdvancedSettings ? {} :
+              { display: 'none' }}
+          >
+            <h2>Advanced Settings</h2>
+            <div style = {{display: 'flex', flexDirection: 'row'}}>
+              <div>
+                <h3>Parameters for Download and Upload</h3>
+                <div>
+                  <div style={{ display: "flex", flexDirection: "row" }}>
+                    <input
+                      type="checkbox"
+                      checked={this.state.createLogFile}
+                      onChange={this.handleLogDialog}
+                    />Create Log File
+                  <textarea
+                      style={textAreaStyle}
+                      rows="1"
+                      cols="20"
+                      value={this.state.logDestination}
+                      onChange={this.handleLogDestination}
+                    />
+                    <button onClick={this.handleLogDestDialog}>Browse</button>
+                  </div>
+                </div>
+                <div>
+                  <input
+                    type="checkbox"
+                    checked={this.state.debugLogging}
+                    onChange={this.handleDebugLogging}
+                  />Debug Logging
+              </div>
+                <div>
+                  <input
+                    type="checkbox"
+                    checked={this.state.verboseLogging}
+                    onChange={this.handleVerboseLogging}
+                  />Verbose Logging
+                </div>
+              </div>
+              <div>
+                <h3>Parameters for Download</h3>
+                <div style={{ display: "flex", flexDirection: "row" }}>
+                  <div>Block Size</div>
+                  &nbsp;
+                  <textarea
+                    style={textAreaStyle}
+                    rows="1"
+                    cols="20"
+                    value={this.state.blockSize}
+                    onChange={this.handleBlockSize}
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "row" }}>
+                  <div>Save Interval</div>
+                  &nbsp;
+                  <textarea
+                    style={textAreaStyle}
+                    rows="1"
+                    cols="20"
+                    value={this.state.saveInterval}
+                    onChange={this.handleSaveInterval}
+                  />
+                </div>
+                <div>
+                  <div>Retries after Downloads</div>
+                  <div>
+                    <input
+                      type="checkbox"
+                      checked={this.state.autoRetry}
+                      onChange={this.handleAutoRetry}
+                    />Auto Retry
+                  </div>
+                  <div>
+                    <textarea
+                      style={textAreaStyle}
+                      rows="1"
+                      cols="2"
+                      value={this.state.numRetrys}
+                      onChange={this.handleNumRetrys}
+                    />Retry(s)
+                  </div>
+                  <div>
+                    <textarea
+                      style={textAreaStyle}
+                      rows="1"
+                      cols="2"
+                      value={this.state.retryInterval}
+                      onChange={this.handleRetryInterval}
+                    />Seconds between Retrys
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3>Parameters for Upload</h3>
+                <div>
+                  <input
+                    type="checkbox"
+                    checked={this.state.multipartUpload}
+                    onChange={this.handleMultipartUpload}
+                  />Enable Multipart Upload
+                </div>
+                <div>
+                  Part Size (Bytes)
+                <textarea
+                    style={textAreaStyle}
+                    rows="1"
+                    cols="20"
+                    value={this.state.partSize}
+                    onChange={this.handlePartSize}
+                  />
+                </div>
+              </div >
             </div>
-            <div>
-              Part Size (Bytes)
-             <textarea
-                style={textAreaStyle}
-                rows="1"
-                cols="20"
-                value={this.state.partSize}
-                onChange={this.handlePartSize}
-              />
-            </div>
-          </div >
+          </div>
+
+
         </div>
       </div >
     )

@@ -34,7 +34,9 @@ export default class Home extends Component {
   }
   render() {
     return (
-      <div>
+      <div 
+      onClick= {this.state.showTokenModal ? this.handleHideToken: ''}
+      style = {this.state.showTokenModal ? {opacity: 0.1} : {}}>
         <Tabs
           onSelect={this.handleSelect}
           forceRenderTabPanel={true}
@@ -131,10 +133,20 @@ export default class Home extends Component {
     this.setState({ consoleLog: { ...this.state.consoleLog, upload: '' } });
 
   handleDownloadConsoleLog = (stderr) =>
-    this.setState({ consoleLog: { ...this.state.consoleLog, download: this.state.consoleLog.download += stderr } });
+    this.setState({
+      consoleLog: {
+        ...this.state.consoleLog,
+        download: this.state.consoleLog.download += stderr
+      }
+    });
 
   handleUploadConsoleLog = (stderr) =>
-    this.setState({ consoleLog: { ...this.state.consoleLog, upload: this.state.consoleLog.upload += stderr } });
+    this.setState({
+      consoleLog: {
+        ...this.state.consoleLog,
+        upload: this.state.consoleLog.upload += stderr
+      }
+    });
 
   handleSelectToken = () => {
     this.setState({ showTokenModal: true })
@@ -147,7 +159,12 @@ export default class Home extends Component {
     var tokenObj;
     helper.checkToken().then((res) => {
       this.setState({ token: res.token });
-      this.setState({ consoleLog: { ...this.state.consoleLog, token: res.consoleLog } });
+      this.setState({
+        consoleLog: {
+          ...this.state.consoleLog,
+          token: res.consoleLog
+        }
+      });
     });
   }
 
@@ -168,13 +185,19 @@ const modalStyles = {
     backgroundColor: 'grey'
   },
   content: {
-    background: 'grey',
+    position: 'absolute',
     top: 'auto',
     left: 'auto',
     right: 'auto',
     bottom: 'auto',
+    border: '1px solid rgb(204, 204, 204)',
+    background: '#fff',
+    overflow: 'auto',
+    borderRadius: '4px',
+    outline: 'none',
+    padding: '20px',
     marginRight: '-50%',
-    transform: 'translate(-50%, -50%)'
+    transform: 'translate(-50%, -50%)',
   }
 };
 
@@ -194,8 +217,8 @@ const StyledModal = styled(Modal) `
     position: 'fixed',
     top: '30%',
     left: '50%',
-    right: 'auto',
-    bottom: 'auto',
+    right: '40%',
+    bottom: '60%',
     backgroundColor: 'grey'
   },
   content: {
