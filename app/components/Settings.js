@@ -5,11 +5,6 @@ import * as helper from './Helper.js'
 var yaml = require('js-yaml');
 const { dialog } = require('electron').remote;
 
-var homedir = os.homedir();
-var isWin = /^win/.test(process.platform);
-var dir = isWin ? homedir + '\\AppData\\Roaming\\dtt\\' : homedir + '/.dtt/';
-
-
 export default class Settings extends React.Component {
   constructor(props) {
     super(props);
@@ -18,12 +13,12 @@ export default class Settings extends React.Component {
       // port: '443',
       numClientCons: '3',
       createLogFile: false,
-      logDestination: homedir,
+      logDestination: helper.homedir,
       debugLogging: false,
       verboseLogging: false,
       blockSize: '1048576',
       saveInterval: '1000000',
-      downloadDestination: homedir,
+      downloadDestination: helper.homedir,
       calcInSegAndCheckMd5: true,
       checkMd5: true,
       autoRetry: true,
@@ -288,8 +283,8 @@ export default class Settings extends React.Component {
   handleSaveSettings = () => helper.saveSettings(this.defaultSettings, this.state);
 
   componentWillMount() {
-    if (fs.existsSync(dir + 'prefs.yml')) {
-      this.setState(yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8')).settings);
+    if (fs.existsSync(helper.dir + 'prefs.yml')) {
+      this.setState(yaml.load(fs.readFileSync(helper.dir + 'prefs.yml', 'utf8')).settings);
     }
     else {
       this.handleSaveSettings();

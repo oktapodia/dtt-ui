@@ -1,5 +1,7 @@
 import { app, BrowserWindow, Menu, shell } from 'electron';
+import { exec } from 'child_process';
 
+export var isWin = /^win/.test(process.platform);
 let menu;
 let template;
 let mainWindow = null;
@@ -17,7 +19,14 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (!isWin) {
+    exec('killall gdc-client', (error, stdout, stderr) => {
+      app.quit();
+    })
+  }
+  else {
+
+  }
 });
 
 

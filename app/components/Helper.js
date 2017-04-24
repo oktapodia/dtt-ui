@@ -3,8 +3,9 @@ import os from 'os';
 import fs from 'fs';
 import axios from 'axios'
 import yaml from 'js-yaml';
+import React from 'react';
 import { exec } from 'child_process';
-
+import uniqby from 'lodash/uniqby';
 
 ////////////////////Global Variables/////////////////////////////
 export var isWin = /^win/.test(process.platform);
@@ -17,15 +18,7 @@ export var getDownloadPrefs = () => {
   var prefStr = '';
   var numClientCons = 0;
   var prefs = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));
-  // for (var sectionKey in prefs.parameters) {
-  //   if (sectionKey !== 'uploadParams') {
-  //     var section = prefs.parameters[sectionKey]
-  //     for (var obj in section) {
-  //       if (obj !== 'numClientCons' && section[obj] !== false)
-  //         prefStr += section[obj]
-  //     }
-  //   }
-  // }
+
   prefStr = Object.keys(prefs.parameters).reduce((str, sectionKey) => {
     if (sectionKey !== 'uploadParams') {
       var section = prefs.parameters[sectionKey];
@@ -45,33 +38,91 @@ export var getDownloadPrefs = () => {
   return strList;
 }
 
+export var checkValidManifest = (manifests) => {
+  var message = [];
+  var excludedFiles = []
+  var validUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return Promise.all(manifests.map(manifest => {
+    return new Promise((res, reject) => {
+      fs.readFile(manifest, 'utf8', (err, content) => {
+        if (err) {
+          reject(err)
+          return;
+        }
+        if (content.split('\n').slice(1).length === 0) {
+          console.log(1)
+          excludedFiles.push(manifest)
+          message.push(manifest + ' has an invalid format\n');
+        }//forEach below will not run if length is 0
+        content.split('\n').slice(1).forEach(x => {
+          var columns = x.split('\t');
+          console.log(!validUUID.test(columns[0]) || !parseInt(columns[3]))
+          if (!validUUID.test(columns[0]) || !parseInt(columns[3])) {//if first column is not uuid or fourth is not a number
+            console.log(2)
+            excludedFiles.push(manifest)
+            message.push(manifest + ' has an invalid format\n');
+          }
+        });
+        res();
+      })
+    }).catch(() => {
+      console.log(4);
+      excludedFiles.push(manifests);
+      message.push('error reading ' + manifest + '\n');
+    })
+  }))
+    .then(() => [uniqby(excludedFiles), uniqby(message)])
+}
 
-export var requestDownloadStatuses = (uuids, manifests) => {
+export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
   var validUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   return Promise.all(uuids.filter(id => validUUID.test(id)).map(id => {
-    return axios.get('https://api.gdc.cancer.gov/v0/files/' + id + '?expand=metadata_files&fields=file_size')
+    return axios.get('https://api.gdc.cancer.gov/v0/files/' + id + '?expand=metadata_files&fields=file_size,file_name,access')
       .then(res => {
-        return { uuid: id, status: 'Not Started', time: '', size: formatBytes(res.data.data.file_size), speed: '' };
+        return {
+          uuid: id,
+          status: 'Not Started',
+          time: '', size: formatBytes(res.data.data.file_size),
+          speed: '',
+          rel: relFiles.toString(),
+          ann: anns.toString(),
+          name: res.data.data.file_name,
+          access: res.data.data.access
+        };
       })
   }))
     .then(objs => {
       var statusObjs = objs;
-      console.log(objs);
       try {
         return Promise.all(manifests.map(manifest => {
           return new Promise((resolve) => {
             fs.readFile(manifest, 'utf8', (err, content) => {
+              console.log(relFiles, anns)
               var fileInfo = content.split('\n').slice(1).map(x => x.split('\t'));
-              const rows = fileInfo.map(x =>
-                ({ uuid: x[0], time: '', status: 'Not Started', size: formatBytes(x[3]), speed: '' }))
-              resolve(rows);
+              Promise.all(fileInfo.map(x => {
+                return axios.get('https://api.gdc.cancer.gov/v0/files/' + x[0] + '?expand=metadata_files&fields=file_name,access')
+                  .then(res => {
+                    return {
+                      uuid: x[0],
+                      time: '',
+                      status: 'Not Started',
+                      size: formatBytes(x[3]),
+                      speed: '',
+                      rel: relFiles.toString(),
+                      ann: anns.toString(),
+                      name: res.data.data.file_name,
+                      access: res.data.data.access
+                    }
+                  })
+              }))
+                .then(rows => resolve(rows));
             });
           });
         }))
           .then((rows) => {
             return rows.reduce((acc, row) => acc.concat(row), statusObjs);
           });
-      } catch(e) {return statusObjs}
+      } catch (e) { return statusObjs }
     });
 }
 
@@ -121,7 +172,14 @@ export var checkToken = () => {
   var tempDir = isWin ? homedir + '\\AppData\\Local\\Temp' : '/tmp';
   var script = prefix + 'download 00007ccc-269b-4cd0-a0b1-6e5d700a8e5f -t ' + dir + 'token.txt -d ' + tempDir;
   if (!fs.existsSync(dir + 'token.txt')) {
-    return new Promise((resolve) => resolve({ consoleLog: '', tokenStatus: 'No Token File' }));
+    return new Promise((resolve) => resolve({
+      consoleLog: '',
+      token: {
+        status: 'No Token File',
+        icon: <i className="fa fa-warning" aria-hidden="true" />,
+        colour: 'red'
+      }
+    }));
   }
   else {
     return new Promise((resolve, reject) => {
@@ -129,13 +187,35 @@ export var checkToken = () => {
         console.log(stderr);
         console.log('stdout: ' + stdout)
         if (stderr.includes('403 Client Error: FORBIDDEN')) {
-          resolve({ consoleLog: stderr, tokenStatus: 'Expired or invalid' });
+          resolve({
+            consoleLog: stderr,
+            token: {
+              status: 'Expired or invalid',
+              icon: <i className="fa fa-times-circle" aria-hidden="true" />,
+              colour: 'red'
+
+            }
+          });
         }
         else if (stdout.includes('Successfully downloaded')) {
-          resolve({ consoleLog: '', tokenStatus: 'Valid' });
+          resolve({
+            consoleLog: '',
+            token: {
+              status: 'Valid',
+              icon: <i className="fa fa-check" aria-hidden="true" />,
+              colour: 'green'
+            }
+          });
         }
         else {
-          resolve({ consoleLog: stderr, tokenStatus: 'Unknown' });
+          resolve({
+            consoleLog: stderr,
+            token: {
+              status: 'Unknown',
+              icon: <i className="fa fa-times-circle" aria-hidden="true" />,
+              colour: 'red'
+            }
+          });
         }
         if (error !== null) {
           reject('exec error: ' + error);
@@ -224,6 +304,15 @@ export var getClientCons = () => {
   return cons > 6 && cons < 1 ? 6 : cons;
 }
 
+export var isDirDefault = (type) => {
+  var obj = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));
+  if (type === 'download') {
+    return obj.parameters.downloadParams.downloadDestination === homedir;
+  }
+  else {
+    return obj.parameters.uploadParams.uploadSource === homedir;
+  }
+}
 export var killProcesses = (processes) => {
   console.log(processes);
   processes.forEach(process => killProcess(process))
@@ -282,9 +371,8 @@ export var formatTime = (time) => {
 export var formatBytes = (bytes, decimals) => {
   if (bytes == 0) return '0 Bytes';
   var k = 1000,
-    dm = decimals + 1 || 3,
     sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
     i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 

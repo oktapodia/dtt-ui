@@ -1,7 +1,6 @@
 'use strict';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import styles from './Home.css';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import * as helper from './Helper.js';
 import Modal from 'react-modal';
@@ -19,9 +18,13 @@ export default class Home extends Component {
     super();
     this.state = {
       selectedTab: 1,
-      showModal: false,
-      tokenFile: '',
-      tokenStatus: '',
+      showTokenModal: false,
+      showDownloadModal: false,
+      token: {
+        status: '',
+        icon: '',
+        colour: '',
+      },
       consoleLog: {
         download: '',
         upload: '',
@@ -38,59 +41,84 @@ export default class Home extends Component {
           selectedIndex={this.state.selectedTab}
         >
           <TabList style={{ display: 'flex', flexWrap: 'no-wrap' }}>
-            <div style={{ 
+            <div style={{
               width: '221px',
-              heigh: '30px',
-              minWidth: '221px', 
-              minHeight: '30px', 
-              margin: '10px 0px' }}>
-              <img style={{ 
-                display: 'flex', 
+              height: '30px',
+              minWidth: '221px',
+              minHeight: '30px',
+              margin: '10px 0px'
+            }}>
+              <img style={{
+                display: 'flex',
                 alignItems: 'center',
-                maxWidth: '100%', 
-                maxHeight: '100%' }} 
+                maxWidth: '100%',
+                maxHeight: '100%'
+              }}
                 src={require("../res/NIH_GDC_DTT_Desktop_logo.png")} />
             </div>
-            <Tab><i className="fa fa-download" aria-hidden="true"/>&nbsp;Download</Tab>
-            <Tab><i className="fa fa-upload" aria-hidden="true"/>&nbsp;Upload</Tab>
-            <Tab><i className="fa fa-file-text-o" aria-hidden="true"/>&nbsp;Log</Tab>
+            <Tab><i className="fa fa-download" aria-hidden="true" />&nbsp;Download</Tab>
+            <Tab><i className="fa fa-upload" aria-hidden="true" />&nbsp;Upload</Tab>
+            <Tab><i className="fa fa-file-text-o" aria-hidden="true" />&nbsp;Log</Tab>
             <Tab><i className="fa fa-cog" aria-hidden="true" />&nbsp;Settings</Tab>
             <div
-              style={{ 
+              style={{
                 display: 'flex',
-                marginLeft: 'auto', 
+                marginLeft: 'auto',
                 marginRight: '5px',
-                alignItems: 'center' }}
+                alignItems: 'center'
+              }}
               onClick={this.handleSelectToken}>
               <TokenLink>
-              Token Status: {this.state.tokenStatus}</TokenLink>
+                Token Status:&nbsp;
+                <span style={{ fontWeight: 'bold', color: this.state.token.colour }}>
+                  {this.state.token.status}
+                  {this.state.token.icon}
+                </span>
+              </TokenLink>
             </div>
           </TabList>
-          <TabPanel/>{/* tabs and tab panels must align, this placeholder matches with image title */}
-          <TabPanel><Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} /></TabPanel>
+          <TabPanel />{/* tabs and tab panels must align, this placeholder matches with image title */}
+          <TabPanel style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}><Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} /></TabPanel>
           <TabPanel><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>
           <TabPanel><Console consoleLog={this.state.consoleLog} /></TabPanel>
           <TabPanel><Settings /></TabPanel>
         </Tabs>
+
+
+        {/*{Token Modal}*/}
         <Modal
-          isOpen={this.state.showModal}
+          isOpen={this.state.showTokenModal}
           onRequestClose={this.handleHideToken}
-          contentLabel="Modal"
+          contentLabel="Token"
           style={modalStyles}
         >
           <h1>Token</h1>
-          <div >
+          <div>
             <Token
               check={this.handleTokenCheck}
               close={this.handleHideToken}
               consoleLog={this.state.consoleLog.token} />
           </div>
         </Modal>
+
+        {/*Download Modal*/}
+        <Modal
+          isOpen={this.state.showDownloadModal}
+          onRequestClose={this.handleHideDownloadModal}
+          contentLabel="Download Directory Picker"
+          style={modalStyles}
+        >
+          <h1>Pick your download directory</h1>
+          <div>
+            Download Directory:
+          <button onClick={this.handleDownloadDir}>Browse</button>
+          </div>
+        </Modal>
       </div >
     );
   }
   handleSelect = (index) => {
-    this.setState({ selectedTab: index });//the logo is 0
+    this.setState({ selectedTab: index });
   }
 
   handleSettings = () =>
@@ -109,21 +137,25 @@ export default class Home extends Component {
     this.setState({ consoleLog: { ...this.state.consoleLog, upload: this.state.consoleLog.upload += stderr } });
 
   handleSelectToken = () => {
-    this.setState({ showModal: true })
+    this.setState({ showTokenModal: true })
   }
 
   handleHideToken = () =>
-    this.setState({ showModal: false });
+    this.setState({ showTokenModal: false });
 
   handleTokenCheck = () => {
     var tokenObj;
     helper.checkToken().then((res) => {
-      this.setState({ tokenStatus: res.tokenStatus });
+      this.setState({ token: res.token });
       this.setState({ consoleLog: { ...this.state.consoleLog, token: res.consoleLog } });
     });
   }
 
-  componentWillMount = this.handleTokenCheck
+  componentWillMount = this.handleTokenCheck;
+
+  componentDidMount = () => {
+    this.setState({ showDownloadModal: helper.isDirDefault('download') && this.state.selectedTab === 1 });
+  }
 }
 
 const modalStyles = {
@@ -155,4 +187,32 @@ const TokenLink = styled.a`
     background-color: #5b5151;
     color: #fff;
   }
+`;
+
+const StyledModal = styled(Modal) `
+  overlay: {
+    position: 'fixed',
+    top: '30%',
+    left: '50%',
+    right: 'auto',
+    bottom: 'auto',
+    backgroundColor: 'grey'
+  },
+  content: {
+    position: absolute;
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    border: 1px solid rgb(204, 204, 204);
+    background: #fff;
+    overflow: auto;
+    border-radius: 4px;
+    outline: none;
+    padding: 20px;
+    margin-right: -50%;
+    transform: translate(-50%, -50%);
+  }
+
+
 `;
