@@ -47,10 +47,12 @@ export default class Token extends React.Component {
           onDrop={(acceptedFiles, rejectedFiles) => { this.setState({ tokenFile: acceptedFiles[0].path }); acceptedFiles = [] }}
           multiple={false}
           disableClick={true}
-          onClick={this.handleTokenDialog}
         >
-          <div style={{display: 'flex', float: 'center'}}>
-            Drag your token into here or click to browse for file
+          <div style={{ display: 'flex', alignItems: 'center'}}>
+            Drag your token into here or browse for file
+            <button onClick={this.handleTokenDialog}>
+              <i className="fa fa-plus" aria-hidden="true" />
+            </button>
           </div>
         </Dropzone>
         <div style={{ display: 'flex', float: 'right', alignSelf: 'flex-end' }}>

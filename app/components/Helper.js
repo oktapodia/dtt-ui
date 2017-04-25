@@ -50,15 +50,12 @@ export var checkValidManifest = (manifests) => {
           return;
         }
         if (content.split('\n').slice(1).length === 0) {
-          console.log(1)
           excludedFiles.push(manifest)
           message.push(manifest + ' has an invalid format\n');
         }//forEach below will not run if length is 0
         content.split('\n').slice(1).forEach(x => {
           var columns = x.split('\t');
-          console.log(!validUUID.test(columns[0]) || !parseInt(columns[3]))
           if (!validUUID.test(columns[0]) || !parseInt(columns[3])) {//if first column is not uuid or fourth is not a number
-            console.log(2)
             excludedFiles.push(manifest)
             message.push(manifest + ' has an invalid format\n');
           }
@@ -66,7 +63,6 @@ export var checkValidManifest = (manifests) => {
         res();
       })
     }).catch(() => {
-      console.log(4);
       excludedFiles.push(manifests);
       message.push('error reading ' + manifest + '\n');
     })
@@ -87,7 +83,8 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
           rel: relFiles.toString(),
           ann: anns.toString(),
           name: res.data.data.file_name,
-          access: res.data.data.access
+          access: res.data.data.access,
+          indivDownload: false,
         };
       })
   }))
@@ -97,7 +94,6 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
         return Promise.all(manifests.map(manifest => {
           return new Promise((resolve) => {
             fs.readFile(manifest, 'utf8', (err, content) => {
-              console.log(relFiles, anns)
               var fileInfo = content.split('\n').slice(1).map(x => x.split('\t'));
               Promise.all(fileInfo.map(x => {
                 return axios.get('https://api.gdc.cancer.gov/v0/files/' + x[0] + '?expand=metadata_files&fields=file_name,access')
@@ -111,7 +107,8 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
                       rel: relFiles.toString(),
                       ann: anns.toString(),
                       name: res.data.data.file_name,
-                      access: res.data.data.access
+                      access: res.data.data.access,
+                      indivDownload: false,
                     }
                   })
               }))
@@ -320,6 +317,7 @@ export var killProcesses = (processes) => {
 
 export var killProcess = (process) => {
   try {
+    process.callback();
     clearInterval(process.timer);
     if (isWin) {
     }

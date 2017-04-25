@@ -101,8 +101,20 @@ export default class Download extends Component {
                 {this.state.uuidStatuses.map(x =>
                   <tr key={x.uuid}>
                     <td>
-                      <button onClick={() => this.handleRemoveDownload(x.uuid)}><i className="fa fa-times" aria-hidden="true"></i></button>
-                      <button onClick={() => this.handleUnshiftDownload(x.uuid)}><i className="fa fa-arrow-up" aria-hidden="true"></i></button>
+                      <button onClick={() => {
+                        this.state.uuidStatuses.find(y => y.uuid === x.uuid).status === 'Downloading' ?
+                          this.handleStopDownload(x.uuid) :
+                          this.handleDownload(x.uuid);
+                      }}>
+                        {
+                          this.state.uuidStatuses.find(y => y.uuid === x.uuid).status === 'Downloading' ?
+                            <i className="fa fa-stop" aria-hidden="true" /> :
+                            <i className="fa fa-play" aria-hidden="true" />
+                        }
+                      </button>
+                      <button onClick={() => this.handleRemoveDownload(x.uuid)}>
+                        <i className="fa fa-trash" aria-hidden="true" />
+                      </button>
                     </td>
                     <td style={{ textAlign: 'center' }}>{x.name}</td>
                     <td style={{ textAlign: 'center' }}>{x.uuid}</td>
@@ -121,7 +133,7 @@ export default class Download extends Component {
                 <div>
                   No files added to queue. Drag and drop or browse manifests from the toolbar above.
                   Files can also been selected by UUID in the text box.
-                  </div>
+                </div>
               </div>
               : ''}
           </div>
@@ -157,7 +169,7 @@ export default class Download extends Component {
             files = files.filter(x => excludedFiles.indexOf(x) === -1)//remove invalid files from list of files
             this.setState({ manifestFiles: files, message: message });
             if (files.length > 0)//if there are valid files
-              this.setState({ downloadStep: 1 })
+              this.setState({ downloadStep: 1 });
           });
       }
     }
@@ -193,7 +205,6 @@ export default class Download extends Component {
             .then(arr => {
               var excludedFiles = arr[0],
                 message = arr[1];
-              console.log(excludedFiles, message.toString());
               excludedFiles = uniqby(excludedFiles);//remove dupes from returned array
               files = files.filter(x => excludedFiles.indexOf(x) === -1)//remove invalid files from list of files
               this.setState({ manifestFiles: files, message: message });
@@ -204,19 +215,27 @@ export default class Download extends Component {
       }
       catch (e) { console.log(e); this.setState({ manifestFiles: '' }) }
     });
+  handleStopDownload = (uuid) => {
+    helper.killProcess(this.downloadProcesses.find(x => x.uuid === uuid))
+    var tempStatusArray = this.state.uuidStatuses;
+    var file = tempStatusArray.find(x => x.uuid === uuid);
+    var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid);
+    file.status = 'Stopped';
+    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+  }
   handleStopAllDownloads = () => {
     helper.killProcesses(this.downloadProcesses);
     var tempStatusArray = this.state.uuidStatuses;
     tempStatusArray.forEach(obj => {
       if (obj.status !== 'Downloaded' || 'Failed')
-        obj.status = 'Skipped'
+        obj.status = 'Stopped'
     });
     this.setState({ uuidStatuses: tempStatusArray, downloadStatus: 'Stopped' }, this.checkNumOfDownloads);
   }
 
   handleClear = () => {
     this.handleStopAllDownloads();
-    this.setState({ uuidStatuses: [], downloadStatus: 'Downloaded' })
+    this.setState({ uuidStatuses: [], downloadStatus: 'Downloaded' });
   }
   handleAddFiles = () => {
     this.handleFileChange(this.state.uuidStr, this.state.manifestFiles);
@@ -224,19 +243,31 @@ export default class Download extends Component {
   }
 
   handleDownload = (uuid) => {
+    var tempStatusArray = this.state.uuidStatuses;
     var file = tempStatusArray.find(x => x.uuid === uuid);
     var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid);
-    this.queueArr.push()
+    file.indivDownload = true;
+    file.status = 'Downloading';
+    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
+      this.queue.unshift(uuid);
+      this.checkNumOfDownloads();
+    });
   }
+
   handleAllDownloads = () => {
     console.log(this.queue.workersList());
     var tempStatusArray = this.state.uuidStatuses.map(x => {
-      return { ...x, time: '', speed: '', status: 'Not Started' }
+      return {
+        ...x, time: '', speed: '',
+        status: x.indivDownload ?
+          this.state.downloadStatus === 'Downloaded' ? 'Not Started' : x.status
+          : 'Not Started',
+        indivDownload: this.state.downloadStatus === 'Downloaded' ? 'Not Started' : x.status
+      }
     });
     this.props.clearLog();
     this.downloadProcesses = [];
     this.setState({ downloadStatus: 'Downloading', uuidStatuses: tempStatusArray, downloadStep: 0 });
-    this.prefList = helper.getDownloadPrefs();
     this.queueArr = this.state.uuidStatuses.map(x => x.uuid);
     this.queue.push(Array.apply(null, Array(helper.getClientCons())).map(String.prototype.valueOf, 'dud'), this.queueCallback)//kickstart queue 
     console.log(this.queue.workersList());
@@ -244,12 +275,12 @@ export default class Download extends Component {
 
   handleRemoveDownload = (uuid) => {
     var tempStatusArray = this.state.uuidStatuses;
-    var file = tempStatusArray.find(x => x.uuid === uuid);
-    var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid)
-    file.status = 'Skipped';
+    var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid);
+    tempStatusArray.splice(fileIndex,1);
     if (this.state.downloadStatus === 'Downloading')
       helper.killProcess(this.downloadProcesses.find(x => x.uuid === uuid))
-    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+    this.setState({ uuidStatuses: tempStatusArray })
+    console.log(tempStatusArray);
   }
 
   handleUnshiftDownload = (uuid) => {
@@ -266,7 +297,6 @@ export default class Download extends Component {
   handleFileChange = (uuids, manifestFiles) => {
     helper.requestDownloadStatuses(uuids.split(/\s+/), manifestFiles, this.state.relatedFiles, this.state.annotations)
       .then(objs => {
-        console.log(objs);
         if (this.state.downloadStatus !== 'Downloaded') {
           this.setState({ uuidStatuses: uniqby(this.state.uuidStatuses.concat(objs), 'uuid') }, this.checkNumOfDownloads);
           this.queueArr = this.queueArr.concat(uniqby(objs.map(x => x.uuid)));
@@ -281,6 +311,7 @@ export default class Download extends Component {
   }
 
   spawnDownload = (uuid, strList, callback) => {
+    var obj = this.state.uuidStatuses.find(x => x.uuid === uuid);
     var status = 'Not Done';//ensures that callback() isn't called multiple times
     var time,
       timer = null,
@@ -292,7 +323,7 @@ export default class Download extends Component {
       status = 'Done'
       callback('err')//ends all downloads
     }
-    if (this.state.downloadStatus === 'Downloading') {
+    if (this.state.downloadStatus === 'Downloading' || obj.indivDownload) {
       var cmd = exec(script, { maxBuffer: 1024 * 1000 }, (error, stdout, stderr) => {
         if (error !== null) {
           console.log('exec error: ' + error);
@@ -308,11 +339,12 @@ export default class Download extends Component {
           }
         }
       });
+      var pid = cmd.pid;
     }
     else { callback() };
-    var pid = cmd.pid;
+
     cmd.stdout.on('data', (data) => {
-      if (this.state.downloadStatus === 'Downloading') {
+      if (this.state.downloadStatus === 'Downloading' || obj.indivDownload) {
         console.log(data)
         var tempStatusArray = this.state.uuidStatuses;
         var file = tempStatusArray.find(x => x.uuid === uuid);
@@ -344,7 +376,10 @@ export default class Download extends Component {
               this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
             }, 1000);
           }
-          this.downloadProcesses.push({ uuid: uuid, timer: timer, pid: pid });
+          var process = this.downloadProcesses.find(x => x.uuid === uuid);
+          var processIndex = this.downloadProcesses.findIndex(x => x.uuid === uuid);
+          this.downloadProcesses[processIndex] = { ...process, pid: pid, timer: timer }
+          console.log(this.downloadProcesses[processIndex]);
         }
       }
     });
@@ -369,7 +404,7 @@ export default class Download extends Component {
 
   checkNumOfDownloads = () => {
     var statuses = {
-      Downloaded: 0, Skipped: 0,
+      Downloaded: 0, Stopped: 0,
       Downloading: 0, Failed: 0, 'Not Started': 0
     }
     var statusStr = '';
@@ -387,23 +422,29 @@ export default class Download extends Component {
   }
 
   componentDidMount = () => {
-    this.queueTemplate = async.queue((uuid, callback) => {
-      if (uuid === 'dud') {//only kickstarters have 'dud' as uuid
-        callback();
-      }
-      else if (this.state.downloadStatus === 'Downloading' && this.state.uuidStatuses.find(x => x.uuid === uuid).status === 'Not Started') {
-        var obj = this.state.uuidStatuses.find(x => x.uuid === uuid);
-        var rel = obj.rel === 'true' ? '' : ' --no-related-files '
-        var ann = obj.ann === 'true' ? '' : ' --no-annotations '
-        this.prefList = this.prefList.concat([rel, ann])
-        this.state.uuidStatuses.find(x => x.uuid === uuid).status
-        this.spawnDownload(uuid, this.prefList, callback)
-      }
-      else {
-        callback();
-      }
+    this.prefList = helper.getDownloadPrefs();
+    this.queue = async.queue((uuid, callback) => {
+      var obj = this.state.uuidStatuses.find(x => x.uuid === uuid)
+      try {
+        if (uuid === 'dud') {//only kickstarters have 'dud' as uuid
+          callback();
+          console.log('lol')
+        }
+
+        else if ((this.state.downloadStatus === 'Downloading' && obj.status === 'Not Started') || (obj.status === 'Downloading' && obj.indivDownload)) {
+          console.log('lmao')
+          var rel = obj.rel === 'true' ? '' : ' --no-related-files '
+          var ann = obj.ann === 'true' ? '' : ' --no-annotations '
+          this.state.uuidStatuses.find(x => x.uuid === uuid).status;
+          this.downloadProcesses.push({ uuid: uuid, timer: null, pid: null, callback: callback });
+          this.spawnDownload(uuid, this.prefList.concat([rel, ann]), callback)
+        }
+        else {
+          callback();
+        }
+      } catch (e) { console.log(e); callback() }
     }, helper.getClientCons());
-    this.queue = this.queueTemplate;
+
     this.queue.drain = () => {
       console.log('Drained');
       this.setState({ downloadStatus: 'Downloaded' });
