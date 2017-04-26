@@ -33,7 +33,7 @@ export var getDownloadPrefs = () => {
   }, '')
   console.log(prefStr);
   if (numClientCons > 6) numClientCons = 6;
-  var tokenStr = ' -t ' + dir + 'token.txt ';
+  var tokenStr = fs.existsSync(dir + 'token.txt') ? ' -t ' + dir + 'token.txt ' : ' ';
   var strList = [tokenStr, prefStr];
   return strList;
 }
@@ -164,6 +164,19 @@ export var requestUploadStatus = (isUUID, arg) => {
   }
 }
 
+export var saveState = (state) => {
+  var yamlObj = yaml.dump(state);
+  fs.writeFileSync(dir + 'state.yml', yamlObj);
+
+}
+
+export var getState = () => {
+  if(!fs.existsSync(dir + 'state.yml')) {
+    return false;
+  }
+   var state = yaml.load(fs.readFileSync(dir + 'state.yml', 'utf8'));
+   return state;
+}
 //////////////////////Token Functions/////////////////////////
 export var checkToken = () => {
   var tempDir = isWin ? homedir + '\\AppData\\Local\\Temp' : '/tmp';

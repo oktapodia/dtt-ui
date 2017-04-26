@@ -99,7 +99,7 @@ export default class Download extends Component {
               </thead>
               <tbody style={{ fontSize: '12px' }}>
                 {this.state.uuidStatuses.map(x =>
-                  <tr key={x.uuid}>
+                  <tr key={x.uuid} style={{ verticalAlign: 'top', borderBottom: '1px solid lightgrey' }}>
                     <td>
                       <button onClick={() => {
                         this.state.uuidStatuses.find(y => y.uuid === x.uuid).status === 'Downloading' ?
@@ -137,7 +137,6 @@ export default class Download extends Component {
               </div>
               : ''}
           </div>
-
           <div>
             <div style={{ float: 'right' }}>
               <button
@@ -157,6 +156,7 @@ export default class Download extends Component {
         </Dropzone>
       </div >)
   }
+
   handleManifestDrop = (paths) => {
     try {
       var files = paths.map(file => file.path);
@@ -170,6 +170,8 @@ export default class Download extends Component {
             this.setState({ manifestFiles: files, message: message });
             if (files.length > 0)//if there are valid files
               this.setState({ downloadStep: 1 });
+            else
+              this.setState({ downloadStep: 0 })
           });
       }
     }
@@ -182,7 +184,7 @@ export default class Download extends Component {
     this.setState({ uuidStr: e.target.value });
     var uuids = e.target.value.split(/\s+/);
     var validUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    uuids.filter(x => validUUID.test(x)).length > 0 ? this.setState({ downloadStep: 1 }) : '';
+    uuids.filter(x => validUUID.test(x)).length > 0 ? this.setState({ downloadStep: 1 }) : this.setState({ downloadStep: 0 });
   }
 
   handleResetManifestFile = () =>
@@ -197,7 +199,7 @@ export default class Download extends Component {
   handleCheckRelatedFiles = () =>
     this.setState({ relatedFiles: !this.state.relatedFiles });
 
-  handleManifestDialog = () =>
+  handleManifestDialog = () => {
     dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] }, (files) => {
       try {
         if (files.length > 0) {
@@ -210,36 +212,52 @@ export default class Download extends Component {
               this.setState({ manifestFiles: files, message: message });
               if (files.length > 0)//if there are valid files
                 this.setState({ downloadStep: 1 })
+              else
+                this.setState({ downloadStep: 0 })
             });
         }
       }
       catch (e) { console.log(e); this.setState({ manifestFiles: '' }) }
     });
+  }
+
   handleStopDownload = (uuid) => {
     helper.killProcess(this.downloadProcesses.find(x => x.uuid === uuid))
+    this.downloadProcesses.splice(this.downloadProcesses.findIndex(x => x.uuid === uuid), 1)
     var tempStatusArray = this.state.uuidStatuses;
     var file = tempStatusArray.find(x => x.uuid === uuid);
     var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid);
     file.status = 'Stopped';
-    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
+      helper.saveState(this.state);
+      this.checkNumOfDownloads()
+    });
   }
+
   handleStopAllDownloads = () => {
     helper.killProcesses(this.downloadProcesses);
     var tempStatusArray = this.state.uuidStatuses;
     tempStatusArray.forEach(obj => {
-      if (obj.status !== 'Downloaded' || 'Failed')
+      if (obj.status !== 'Downloaded' && obj.status !== 'Failed')
         obj.status = 'Stopped'
     });
-    this.setState({ uuidStatuses: tempStatusArray, downloadStatus: 'Stopped' }, this.checkNumOfDownloads);
+    this.setState({ uuidStatuses: tempStatusArray, downloadStatus: 'Stopped' }, () => {
+      helper.saveState(this.state);
+      this.checkNumOfDownloads();
+    });
   }
 
   handleClear = () => {
     this.handleStopAllDownloads();
     this.setState({ uuidStatuses: [], downloadStatus: 'Downloaded' });
   }
+
   handleAddFiles = () => {
     this.handleFileChange(this.state.uuidStr, this.state.manifestFiles);
-    this.setState({ manifestFiles: '', uuidStr: '', downloadStep: 2 });
+    this.setState({ manifestFiles: '', uuidStr: '', downloadStep: 0 }, () => {
+      helper.saveState(this.state);
+      this.checkNumOfDownloads();
+    });
   }
 
   handleDownload = (uuid) => {
@@ -250,6 +268,7 @@ export default class Download extends Component {
     file.status = 'Downloading';
     this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
       this.queue.unshift(uuid);
+      helper.saveState(this.state);
       this.checkNumOfDownloads();
     });
   }
@@ -260,9 +279,8 @@ export default class Download extends Component {
       return {
         ...x, time: '', speed: '',
         status: x.indivDownload ?
-          this.state.downloadStatus === 'Downloaded' ? 'Not Started' : x.status
-          : 'Not Started',
-        indivDownload: this.state.downloadStatus === 'Downloaded' ? 'Not Started' : x.status
+          (this.state.downloadStatus === 'Downloaded' ? 'Not Started' : x.status) : 'Not Started',
+        indivDownload: this.state.downloadStatus === 'Downloaded' ? false : true
       }
     });
     this.props.clearLog();
@@ -276,7 +294,7 @@ export default class Download extends Component {
   handleRemoveDownload = (uuid) => {
     var tempStatusArray = this.state.uuidStatuses;
     var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid);
-    tempStatusArray.splice(fileIndex,1);
+    tempStatusArray.splice(fileIndex, 1);
     if (this.state.downloadStatus === 'Downloading')
       helper.killProcess(this.downloadProcesses.find(x => x.uuid === uuid))
     this.setState({ uuidStatuses: tempStatusArray })
@@ -287,7 +305,10 @@ export default class Download extends Component {
     var tempStatusArray = this.state.uuidStatuses;
     var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid)
     tempStatusArray.unshift(tempStatusArray.splice(fileIndex, 1));
-    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+    this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
+      helper.saveState(this.state);
+      this.checkNumOfDownloads();
+    });
     if (this.state.downloadStatus === 'Downloading') {
       var queueIndex = this.queueArr.findIndex(x => x === uuid);
       this.queueArr.unshift(this.queueArr.splice(queueIndex, 1));
@@ -298,16 +319,22 @@ export default class Download extends Component {
     helper.requestDownloadStatuses(uuids.split(/\s+/), manifestFiles, this.state.relatedFiles, this.state.annotations)
       .then(objs => {
         if (this.state.downloadStatus !== 'Downloaded') {
-          this.setState({ uuidStatuses: uniqby(this.state.uuidStatuses.concat(objs), 'uuid') }, this.checkNumOfDownloads);
+          this.setState({ uuidStatuses: uniqby(this.state.uuidStatuses.concat(objs), 'uuid') }, () => {
+            helper.saveState(this.state);
+            this.checkNumOfDownloads();
+          });
           this.queueArr = this.queueArr.concat(uniqby(objs.map(x => x.uuid)));
         }
         else {
-          this.setState({ uuidStatuses: objs }, this.checkNumOfDownloads)
+          this.setState({ uuidStatuses: objs }, () => {
+            helper.saveState(this.state);
+            this.checkNumOfDownloads();
+          })
           this.queueArr = objs.map(x => x.uuid)
         }
+        if (this.state.downloadStatus === 'Downloading')
+          this.queue.push(Array.apply(null, Array(helper.getClientCons())).map(String.prototype.valueOf, 'dud'), this.queueCallback)//kickstart the new batch of downloads
       });
-    if (this.state.downloadStatus === 'Downloading')
-      this.queue.push(Array.apply(null, Array(helper.getClientCons())).map(String.prototype.valueOf, 'dud'), this.queueCallback)//kickstart the new batch of downloads
   }
 
   spawnDownload = (uuid, strList, callback) => {
@@ -331,7 +358,10 @@ export default class Download extends Component {
           var file = tempStatusArray.find(x => x.uuid === uuid);
           var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid)
           file.status = 'Failed'
-          this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+          this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
+            helper.saveState(this.state);
+            this.checkNumOfDownloads();
+          });
           if (status === 'Not Done') {
             console.log('failed callback')
             status = 'Done'
@@ -353,7 +383,10 @@ export default class Download extends Component {
         if (data.includes('100%') && (data.includes('Successfully') || data.includes('Time: 0:00:00'))) {
           file.status = 'Downloaded';
           clearInterval(timer);
-          this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+          this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
+            helper.saveState(this.state);
+            this.checkNumOfDownloads();
+          });
           if (status === 'Not Done') {
             console.log('downloaded callback')
             status = 'Done'
@@ -373,7 +406,10 @@ export default class Download extends Component {
               var file = tempStatusArray.find(x => x.uuid === uuid);
               var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid)
               file.time = '(' + helper.formatTime(new Date().getTime() - time) + ')';
-              this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+              this.setState({ uuidStatuses: Object(tempStatusArray, { [fileIndex]: file }) }, () => {
+                helper.saveState(this.state);
+                this.checkNumOfDownloads();
+              });
             }, 1000);
           }
           var process = this.downloadProcesses.find(x => x.uuid === uuid);
@@ -396,7 +432,10 @@ export default class Download extends Component {
           status = 'Done';
           callback({ uuid: uuid, timer: timer, pid: pid });
         }
-        this.setState({ uuidStatuses: Object.assign(tempStatusArray, { [fileIndex]: file }) }, this.checkNumOfDownloads);
+        this.setState({ uuidStatuses: Object.assign(tempStatusArray, { [fileIndex]: file }) }, () => {
+          helper.saveState(this.state);
+          this.checkNumOfDownloads();
+        });
         this.props.appendLog(data);
       }
     });
@@ -418,6 +457,21 @@ export default class Download extends Component {
   queueCallback = () => {
     if (this.queueArr.length !== 0) {
       this.queue.push(this.queueArr.shift(), this.queueCallback)
+    }
+  }
+
+  componentWillMount = () => {
+    var state = helper.getState();
+    if (state) {
+      if (state.downloadStatus === 'Downloading') {
+        state.downloadStatus = 'Stopped';
+      }
+      state.uuidStatuses.forEach(obj => {
+        if (obj.status === 'Downloading') {
+          obj.status = 'Stopped';
+        }
+      })
+      this.setState(state);
     }
   }
 
@@ -456,19 +510,6 @@ const mainStyle = {
   display: 'flex',
   flexDirection: 'column',
 }
-const fileStyle = {
-  display: 'flex',
-  flexDirection: 'row',
-  justifyContent: 'center',
-};
-
-const selectorStyle = {
-  margin: '11px',
-}
-const destStyle = {
-  margin: '11px',
-}
-
 const textAreaStyle = {
   resize: 'none',
   whiteSpace: 'nowrap',

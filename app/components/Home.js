@@ -59,9 +59,9 @@ export default class Home extends Component {
                 src={require("../res/NIH_GDC_DTT_Desktop_logo.png")} />
             </div>
             <Tab><i className="fa fa-download" aria-hidden="true" />&nbsp;Download</Tab>
-            <Tab><i className="fa fa-upload" aria-hidden="true" />&nbsp;Upload</Tab>
+            {/*<Tab><i className="fa fa-upload" aria-hidden="true" />&nbsp;Upload</Tab>*/}
             <Tab><i className="fa fa-file-text-o" aria-hidden="true" />&nbsp;Log</Tab>
-            <Tab><i className="fa fa-cog" aria-hidden="true" />&nbsp;Settings</Tab>
+            <Tab><i className="fa fa-cog" aria-hidden="true" /></Tab>
             <div
               style={{
                 display: 'flex',
@@ -81,7 +81,7 @@ export default class Home extends Component {
           </TabList>
           <TabPanel />{/* tabs and tab panels must align, this placeholder matches with image title */}
           <TabPanel style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}><Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} /></TabPanel>
-          <TabPanel><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>
+          {/*<TabPanel><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>*/}
           <TabPanel><Console consoleLog={this.state.consoleLog} /></TabPanel>
           <TabPanel><Settings /></TabPanel>
         </Tabs>
@@ -124,7 +124,7 @@ export default class Home extends Component {
   }
 
   handleSettings = () =>
-    this.handleSelect(5);
+    this.handleSelect(4);
 
   handleClearDownloadConsoleLog = () =>
     this.setState({ consoleLog: { ...this.state.consoleLog, download: '' } });
