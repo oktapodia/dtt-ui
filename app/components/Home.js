@@ -236,6 +236,5 @@ const StyledModal = styled(Modal) `
     margin-right: -50%;
     transform: translate(-50%, -50%);
   }
+`
 
-
-`;
