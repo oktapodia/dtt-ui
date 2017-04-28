@@ -1,7 +1,5 @@
 # dtt-ui
 
-UI wrapper for the DTT CLI tool. Based off the boilerplate found [here](https://gitter.im/electron-react-boilerplate/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
 ## Install
 
 * **Note: requires a node version >= 6 and an npm version >= 3.**
@@ -156,6 +154,10 @@ This boilerplate uses a [two package.json structure](https://github.com/electron
 
 ## Static Type Checking
 This project comes with Flow support out of the box! You can annotate your code with types, [get Flow errors as ESLint errors](https://github.com/amilajack/eslint-plugin-flowtype-errors), and get [type errors during runtime](https://github.com/gcanti/babel-plugin-tcomb-boilerplate) during development. Types are completely optional.
+
+
+## Boilerplate
+Based off the boilerplate found [here](https://gitter.im/electron-react-boilerplate/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## License
 MIT © [C. T. Lin](https://github.com/chentsulin)
