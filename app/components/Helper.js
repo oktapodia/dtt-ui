@@ -24,7 +24,7 @@ export var getDownloadPrefs = () => {
       var section = prefs.parameters[sectionKey];
       return Object.keys(section).reduce((str, obj) => {
         if (obj !== 'numClientCons' && section[obj] !== false) {
-          return str + section[obj];
+          return str + section[obj];//number of concurrent downloads is handled in another method
         }
         return str;
       }, str)
@@ -88,7 +88,7 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
         };
       })
   }))
-    .then(objs => {
+    .then(objs => {//get info for files in manifests after the files for uuids
       var statusObjs = objs;
       try {
         return Promise.all(manifests.map(manifest => {
@@ -123,6 +123,19 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
     });
 }
 
+export var saveState = (state) => {
+  var yamlObj = yaml.dump(state);
+  fs.writeFileSync(dir + 'state.yml', yamlObj);
+
+}
+
+export var getState = () => {
+  if (!fs.existsSync(dir + 'state.yml')) {
+    return false;
+  }
+  var state = yaml.load(fs.readFileSync(dir + 'state.yml', 'utf8'));
+  return state;
+}
 
 //////////////////////Upload Functions////////////////////////
 export var getUploadPrefs = (uploadFolder) => {
@@ -164,19 +177,6 @@ export var requestUploadStatus = (isUUID, arg) => {
   }
 }
 
-export var saveState = (state) => {
-  var yamlObj = yaml.dump(state);
-  fs.writeFileSync(dir + 'state.yml', yamlObj);
-
-}
-
-export var getState = () => {
-  if(!fs.existsSync(dir + 'state.yml')) {
-    return false;
-  }
-   var state = yaml.load(fs.readFileSync(dir + 'state.yml', 'utf8'));
-   return state;
-}
 //////////////////////Token Functions/////////////////////////
 export var checkToken = () => {
   var tempDir = isWin ? homedir + '\\AppData\\Local\\Temp' : '/tmp';
@@ -266,6 +266,7 @@ export var saveToken = (tokenFile) => {
 }
 //////////////////////Settings Functions//////////////////////
 export var saveSettings = (defaultSettings, state) => {
+  //settings commented out not available in current version of CLI
   var obj = Object.keys(state).length === 0 ? defaultSettings : state;
   var params = {
     // connectionsParams: {
@@ -311,7 +312,7 @@ export var saveSettings = (defaultSettings, state) => {
 export var getClientCons = () => {
   var obj = yaml.load(fs.readFileSync(dir + 'prefs.yml', 'utf8'));
   var cons = parseInt(obj.parameters.bothParams.numClientCons, 10);
-  return cons > 6 && cons < 1 ? 6 : cons;
+  return cons > 6 && cons < 1 ? 6 : cons;//user may modify prefs file and make the cons unrealistic
 }
 
 export var isDirDefault = (type) => {
@@ -332,17 +333,14 @@ export var killProcess = (process) => {
   try {
     process.callback();
     clearInterval(process.timer);
-    if (isWin) {
-    }
-    else {
-      exec('pkill -TERM -P ' + process.pid, { maxBuffer: 1024 * 1000 }, (error, stdout, stderr) => {
-        if (error !== null) {
-          console.log('exec error: ' + error);
-          console.log(stderr);
-          console.log(stdout);
-        }
-      });
-    }
+    var script = isWin ? 'Taskkill /PID ' + process.pid + ' /F' : 'pkill -TERM -P ' + process.pid
+    exec(script, { maxBuffer: 1024 * 1000 }, (error, stdout, stderr) => {
+      if (error !== null) {
+        console.log('exec error: ' + error);
+        console.log(stderr);
+        console.log(stdout);
+      }
+    });
   } catch (e) { }
 }
 export var saveLog = (type, log) => {

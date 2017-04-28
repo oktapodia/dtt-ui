@@ -5,7 +5,6 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import * as helper from './Helper.js';
 import Modal from 'react-modal';
 import styled from 'styled-components';
-var remote = require('electron').remote;
 
 import Download from './Download';
 import Upload from './Upload';

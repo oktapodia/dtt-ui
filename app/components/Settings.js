@@ -11,7 +11,7 @@ export default class Settings extends React.Component {
     this.defaultSettings = {
       // server: 'https://gdc-api.nci.nih.gov/',
       // port: '443',
-      numClientCons: '3',
+      numClientCons: '3',//number of concurrent downloads/uploads in queue
       createLogFile: false,
       logDestination: helper.homedir,
       debugLogging: false,
