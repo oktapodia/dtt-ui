@@ -10,17 +10,16 @@ UI wrapper for the DTT CLI tool. Based off the boilerplate found [here](https://
 First, clone the repo via git:
 
 ```bash
-git clone --depth=1 https://github.com/NCI-GDC/dtt-ui.git your-project-name
+git clone https://github.com/NCI-GDC/dtt-ui.git
 ```
 
 And then install dependencies.
 **ProTip**: Install with [yarn](https://github.com/yarnpkg/yarn) for faster and safer installation
 
 ```bash
-$ cd your-project-name && npm install
+$ cd dtt-ui && npm install
 ```
 
-:bulb: *In order to remove boilerplate sample code, simply run `npm run cleanup`. After this is run, the initial sample boilerplate code will be removed in order for a clean project for starting custom dev*
 
 ## Run
 
