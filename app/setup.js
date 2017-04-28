@@ -35,11 +35,14 @@ try {
 catch (e) {
     fs.mkdirSync(dir);
 }
+
 try {
     fs.statSync(fileDir).isFile();
 }
 catch (e) {
     var zipPath = dir + (isWin ? '\\gdc.zip' : '/gdc.zip');
+    fs.unlinkSync(zipPath);
+
     https.get(url, (response) => {
         response.on('data', (data) => {
             fs.appendFileSync(zipPath, data);
@@ -47,9 +50,11 @@ catch (e) {
         });
         response.on('end', () => {
             if (isWin) {
-                var zip = new Zip(zipPath);
-                zip.extractAllTo(dir);
-                fs.unlinkSync(zipPath);
+                try {
+                    var zip = new Zip(zipPath);
+                    zip.extractAllTo(dir, true);
+                    fs.unlinkSync(zipPath);
+                } catch (e) { alert(e + ' Close all instances and restart please.') }
             }
             else {
                 exec('unzip ' + zipPath + ' -d ' + dir, () => fs.unlinkSync(zipPath));

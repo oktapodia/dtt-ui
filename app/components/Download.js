@@ -30,7 +30,7 @@ export default class Download extends Component {
 
   render = () => {
     return (
-      <div class="mainContainer" style={{
+      <div className="mainContainer" style={{
         display: 'flex',
         flexDirection: 'column',
         padding: '3px',
@@ -261,6 +261,7 @@ export default class Download extends Component {
   }
 
   handleDownload = (uuid) => {
+    this.prefList = helper.getDownloadPrefs();
     var tempStatusArray = this.state.uuidStatuses;
     var file = tempStatusArray.find(x => x.uuid === uuid);
     var fileIndex = tempStatusArray.findIndex(x => x.uuid === uuid);
@@ -274,6 +275,7 @@ export default class Download extends Component {
   }
 
   handleAllDownloads = () => {
+    this.prefList = helper.getDownloadPrefs();
     var tempStatusArray = this.state.uuidStatuses.map(x => {
       return {
         ...x, time: '', speed: '',
@@ -474,7 +476,6 @@ export default class Download extends Component {
   }
 
   componentDidMount = () => {
-    this.prefList = helper.getDownloadPrefs();
     this.queue = async.queue((uuid, callback) => {
       var obj = this.state.uuidStatuses.find(x => x.uuid === uuid)
       try {

@@ -218,14 +218,26 @@ export var checkToken = () => {
           });
         }
         else {
-          resolve({
-            consoleLog: stderr,
-            token: {
-              status: 'Unknown',
-              icon: <i className="fa fa-times-circle" aria-hidden="true" />,
-              colour: 'red'
-            }
-          });
+          if (stderr.includes('WARNING')) {
+            resolve({
+              consoleLog: stderr,
+              token: {
+                status: 'Valid',
+                icon: <i className="fa fa-check" aria-hidden="true" />,
+                colour: 'green'
+              }
+            });
+          }
+          else {
+            resolve({
+              consoleLog: stderr,
+              token: {
+                status: 'Unknown',
+                icon: <i className="fa fa-times-circle" aria-hidden="true" />,
+                colour: 'red'
+              }
+            });
+          }
         }
         if (error !== null) {
           reject('exec error: ' + error);
