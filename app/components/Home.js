@@ -19,6 +19,7 @@ export default class Home extends Component {
       selectedTab: 1,
       showTokenModal: false,
       showDownloadModal: false,
+      loadingToken: true,
       token: {
         status: '',
         icon: '',
@@ -33,7 +34,7 @@ export default class Home extends Component {
   }
   render() {
     return (
-      <div 
+      <div
       onClick= {this.state.showTokenModal ? this.handleHideToken: ''}
       style = {this.state.showTokenModal ? {opacity: 0.1} : {}}>
         <Tabs
@@ -71,15 +72,21 @@ export default class Home extends Component {
               onClick={this.handleSelectToken}>
               <TokenLink>
                 Token Status:&nbsp;
-                <span style={{ fontWeight: 'bold', color: this.state.token.colour }}>
-                  {this.state.token.status}
-                  {this.state.token.icon}
-                </span>
+
+                {this.state.loadingToken && <i className="fa fa-spinner fa-spin" />}
+                {!this.state.loadingToken &&
+                  <span style={{ fontWeight: 'bold', color: this.state.token.colour }}>
+                    {this.state.token.status}
+                    <span style={{ paddingLeft: '5px' }}>{this.state.token.icon}</span>
+                  </span>
+                }
               </TokenLink>
             </div>
           </TabList>
           <TabPanel />{/* tabs and tab panels must align, this placeholder matches with image title */}
-          <TabPanel style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}><Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} /></TabPanel>
+          <TabPanel style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+            <Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} />
+          </TabPanel>
           {/*<TabPanel><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>*/}
           <TabPanel><Console consoleLog={this.state.consoleLog} /></TabPanel>
           <TabPanel><Settings /></TabPanel>
@@ -112,12 +119,13 @@ export default class Home extends Component {
           <h1>Pick your download directory</h1>
           <div>
             Download Directory:
-          <button onClick={this.handleDownloadDir}>Browse</button>
+            <button onClick={this.handleDownloadDir}>Browse</button>
           </div>
         </Modal>
-      </div >
+      </div>
     );
   }
+
   handleSelect = (index) => {
     this.setState({ selectedTab: index });
   }
@@ -156,12 +164,14 @@ export default class Home extends Component {
 
   handleTokenCheck = () => {
     var tokenObj;
+    this.setState({ loadingToken: true })
     helper.checkToken().then((res) => {
-      this.setState({ token: res.token });
       this.setState({
+        token: res.token,
+        loadingToken: false,
         consoleLog: {
           ...this.state.consoleLog,
-          token: res.consoleLog
+          token: res.consoleLog,
         }
       });
     });
@@ -210,30 +220,3 @@ const TokenLink = styled.a`
     color: #fff;
   }
 `;
-
-const StyledModal = styled(Modal) `
-  overlay: {
-    position: 'fixed',
-    top: '30%',
-    left: '50%',
-    right: '40%',
-    bottom: '60%',
-    backgroundColor: 'grey'
-  },
-  content: {
-    position: absolute;
-    top: auto;
-    left: auto;
-    right: auto;
-    bottom: auto;
-    border: 1px solid rgb(204, 204, 204);
-    background: #fff;
-    overflow: auto;
-    border-radius: 4px;
-    outline: none;
-    padding: 20px;
-    margin-right: -50%;
-    transform: translate(-50%, -50%);
-  }
-`
-
