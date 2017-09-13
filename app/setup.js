@@ -19,7 +19,7 @@ switch (process.platform) {
         break;
     case 'darwin':
         dir = homedir + '/.dtt';
-        url = 'https://gdc.cancer.gov/files/public/file/gdc-client_v1.2.0_OSX_x64.zip';
+        url = 'https://gdc.cancer.gov/files/public/file/gdc-client_v1.3.0_OSX_x64.zip';
         fileDir = dir + '/gdc-client';
         break;
     case 'linux':
@@ -41,7 +41,6 @@ try {
 }
 catch (e) {
     var zipPath = dir + (isWin ? '\\gdc.zip' : '/gdc.zip');
-    fs.unlinkSync(zipPath);
 
     https.get(url, (response) => {
         response.on('data', (data) => {

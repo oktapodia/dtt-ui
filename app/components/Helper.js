@@ -1,4 +1,3 @@
-
 import os from 'os';
 import fs from 'fs';
 import axios from 'axios';
@@ -56,7 +55,7 @@ export var checkValidManifest = manifests => {
         content.split('\n').slice(1).forEach(x => {
           const columns = x.split('\t');
           if (!validUUID.test(columns[0]) || !parseInt(columns[3])) {
-              // if first column is not uuid or fourth is not a number
+            // if first column is not uuid or fourth is not a number
             excludedFiles.push(manifest);
             message.push(`${manifest} has an invalid format\n`);
           }
@@ -74,23 +73,23 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
   const validUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
   return Promise.all(
     uuids.filter(id => validUUID.test(id)).map(id => axios
-        .get(
-          `https://api.gdc.cancer.gov/v0/files/${
-            id
-            }?expand=metadata_files&fields=file_size,file_name,access`
-        )
-        .then(res => ({
-          uuid: id,
-          status: 'Not Started',
-          time: '',
-          size: formatBytes(res.data.data.file_size),
-          speed: '',
-          rel: relFiles.toString(),
-          ann: anns.toString(),
-          name: res.data.data.file_name,
-          access: res.data.data.access,
-          indivDownload: false
-        })))
+      .get(
+      `https://api.gdc.cancer.gov/v0/files/${
+      id
+      }?expand=metadata_files&fields=file_size,file_name,access`
+      )
+      .then(res => ({
+        uuid: id,
+        status: 'Queued',
+        time: '',
+        size: formatBytes(res.data.data.file_size),
+        speed: '',
+        rel: relFiles.toString(),
+        ann: anns.toString(),
+        name: res.data.data.file_name,
+        access: res.data.data.access,
+        indivDownload: false
+      })))
   ).then(objs => {
     // get info for files in manifests after the files for uuids
     const statusObjs = objs;
@@ -100,25 +99,25 @@ export var requestDownloadStatuses = (uuids, manifests, relFiles, anns) => {
           fs.readFile(manifest, 'utf8', (err, content) => {
             const fileInfo = content.split('\n').slice(1).map(x => x.split('\t'));
             Promise.all(
-                fileInfo.map(x => axios
-                    .get(
-                      `https://api.gdc.cancer.gov/v0/files/${
-                        x[0]
-                        }?expand=metadata_files&fields=file_name,access`
-                    )
-                    .then(res => ({
-                      uuid: x[0],
-                      time: '',
-                      status: 'Not Started',
-                      size: formatBytes(x[3]),
-                      speed: '',
-                      rel: relFiles.toString(),
-                      ann: anns.toString(),
-                      name: res.data.data.file_name,
-                      access: res.data.data.access,
-                      indivDownload: false
-                    })))
-              ).then(rows => resolve(rows));
+              fileInfo.map(x => axios
+                .get(
+                `https://api.gdc.cancer.gov/v0/files/${
+                x[0]
+                }?expand=metadata_files&fields=file_name,access`
+                )
+                .then(res => ({
+                  uuid: x[0],
+                  time: '',
+                  status: 'Queued',
+                  size: formatBytes(x[3]),
+                  speed: '',
+                  rel: relFiles.toString(),
+                  ann: anns.toString(),
+                  name: res.data.data.file_name,
+                  access: res.data.data.access,
+                  indivDownload: false
+                })))
+            ).then(rows => resolve(rows));
           });
         }))
       ).then(rows => rows.reduce((acc, row) => acc.concat(row), statusObjs));
@@ -171,33 +170,33 @@ export var requestUploadStatus = (isUUID, arg) => {
           /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)
         )
         .map(id => axios
-            .get(
-              `https://api.gdc.cancer.gov/v0/files/${
-                id
-                }?expand=metadata_files&fields=file_size`
-            )
-            .then(res => ({
-              uuid: id,
-              status: 'Not Started',
-              time: '',
-              size: formatBytes(res.data.data.file_size),
-              speed: ''
-            })))
+          .get(
+          `https://api.gdc.cancer.gov/v0/files/${
+          id
+          }?expand=metadata_files&fields=file_size`
+          )
+          .then(res => ({
+            uuid: id,
+            status: 'Not Started',
+            time: '',
+            size: formatBytes(res.data.data.file_size),
+            speed: ''
+          })))
     );
   }
   const obj = yaml.load(fs.readFileSync(arg, 'utf8')).files;
   const uuids = [];
   obj.forEach(item => uuids.push(item.id));
   return Promise.all(
-      obj.map(x => ({ uuid: x.id, status: 'Not Started', time: '', size: x.file_size, speed: '' }))
-    );
+    obj.map(x => ({ uuid: x.id, status: 'Not Started', time: '', size: x.file_size, speed: '' }))
+  );
 };
 
 // ////////////////////Token Functions/////////////////////////
 export var checkToken = () => {
   const tempDir = isWin ? `${homedir}\\AppData\\Local\\Temp` : '/tmp';
   const script =
-    `${prefix}download 00007ccc-269b-4cd0-a0b1-6e5d700a8e5f -t ${dir}token.txt -d ${tempDir}`;
+    `${prefix}download 3524c96e-1f01-42bf-9ad5-eb345f1bd54a -t ${dir}token.txt -d ${tempDir}`;
   if (!fs.existsSync(`${dir}token.txt`)) {
     return new Promise(resolve =>
       resolve({
@@ -342,10 +341,6 @@ export var isDirDefault = type => {
   }
   return obj.parameters.uploadParams.uploadSource === homedir;
 };
-export var killProcesses = processes => {
-  console.log(processes);
-  processes.forEach(process => killProcess(process));
-};
 
 export var killProcess = process => {
   try {
@@ -359,13 +354,19 @@ export var killProcess = process => {
         console.log(stdout);
       }
     });
-  } catch (e) {}
+  } catch (e) { }
 };
 export var saveLog = (type, log) => {
-  const prefs = yaml.load(fs.readFileSync(`${dir}prefs.yml`, 'utf8'));
-  const logSuffix = isWin ? `\\${type}_log_DTT.txt` : `/${type}_log_DTT.txt`;
-  fs.writeFileSync(prefs.settings.logDestination + logSuffix, log);
+  try {
+    const prefs = yaml.load(fs.readFileSync(`${dir}prefs.yml`, 'utf8'));
+    const logSuffix = isWin ? `\\${type}_log_DTT.txt` : `/${type}_log_DTT.txt`;
+    fs.writeFileSync(prefs.settings.logDestination + logSuffix, log);
+    return `Saved to ${prefs.settings.logDestination}${logSuffix}`;
+  } catch (e) {
+    return e;
+  }
 };
+
 export var fixSpace = str => {
   if (isWin) {
     return `"${str}"`;

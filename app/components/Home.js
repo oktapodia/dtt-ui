@@ -35,8 +35,8 @@ export default class Home extends Component {
   render() {
     return (
       <div
-      onClick= {this.state.showTokenModal ? this.handleHideToken: ''}
-      style = {this.state.showTokenModal ? {opacity: 0.1} : {}}>
+        onClick={this.state.showTokenModal ? this.handleHideToken : ''}
+        style={this.state.showTokenModal ? { opacity: 0.1 } : {}}>
         <Tabs
           onSelect={this.handleSelect}
           forceRenderTabPanel={true}
@@ -61,7 +61,7 @@ export default class Home extends Component {
             <Tab><i className="fa fa-download" aria-hidden="true" />&nbsp;Download</Tab>
             {/*<Tab><i className="fa fa-upload" aria-hidden="true" />&nbsp;Upload</Tab>*/}
             <Tab><i className="fa fa-file-text-o" aria-hidden="true" />&nbsp;Log</Tab>
-            <Tab><i className="fa fa-cog" aria-hidden="true" /></Tab>
+            <Tab><i className="fa fa-cog" aria-hidden="true" />&nbsp;Settings</Tab>
             <div
               style={{
                 display: 'flex',
@@ -84,12 +84,12 @@ export default class Home extends Component {
             </div>
           </TabList>
           <TabPanel />{/* tabs and tab panels must align, this placeholder matches with image title */}
-          <TabPanel style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+          <TabPanel style={tabPanelStyles}>
             <Download clearLog={this.handleClearDownloadConsoleLog} appendLog={this.handleDownloadConsoleLog} />
           </TabPanel>
           {/*<TabPanel><Upload clearLog={this.handleClearUploadConsoleLog} appendLog={this.handleUploadConsoleLog} /></TabPanel>*/}
-          <TabPanel><Console consoleLog={this.state.consoleLog} /></TabPanel>
-          <TabPanel><Settings /></TabPanel>
+          <TabPanel style={tabPanelStyles}><Console consoleLog={this.state.consoleLog} /></TabPanel>
+          <TabPanel style={tabPanelStyles}><Settings /></TabPanel>
         </Tabs>
 
 
@@ -184,10 +184,15 @@ export default class Home extends Component {
   }
 }
 
+const tabPanelStyles = {
+  display: 'flex',
+  flexDirection: 'column',
+  height: 'calc(100vh - 62px)'
+}
 const modalStyles = {
   overlay: {
-    position: 'fixed',
-    top: '30%',
+    position: 'absolute',
+    top: '200px',
     left: '50%',
     right: 'auto',
     bottom: 'auto',

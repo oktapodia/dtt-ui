@@ -9,7 +9,7 @@ export default class Settings extends React.Component {
   constructor(props) {
     super(props);
     this.defaultSettings = {
-      // server: 'https://gdc-api.nci.nih.gov/',
+      server: 'https://api.gdc.cancer.gov/',
       // port: '443',
       numClientCons: '3', // number of concurrent downloads/uploads in queue
       createLogFile: false,
@@ -33,7 +33,7 @@ export default class Settings extends React.Component {
   render() {
     return (
       <div>
-        <div className="mainSettings" style={{ padding: '25px' }}>
+        <div className="mainSettings" style={{ paddingLeft: '25px' }}>
           <div>
             <h1>Settings</h1>
             <div>

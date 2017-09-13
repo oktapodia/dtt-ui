@@ -21,9 +21,13 @@ export default class Console extends Component {
 
 }
 
-
-
 class ConsoleSection extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      status: '(Choose path in Settings)'
+    }
+  }
   render() {
     return (<div className="terminalContainer">
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -33,14 +37,19 @@ class ConsoleSection extends Component {
             display: 'flex',
             resize: 'none',
             boxSizing: 'border-box',
-            width: '98%'
+            padding: '20px',
+            height: 'calc(100vh - 180px)'
           }}
           value={this.props.consoleLog}
         />
-        <span><button onClick={this.handleSaveLog}>Save log</button> (Choose path in settings)</span>
+        <span><button onClick={this.handleSaveLog}>Save log</button> {this.state.status}</span>
       </div>
     </div>
     )
   }
-  handleSaveLog = () => helper.saveLog(this.props.type, this.props.consoleLog)
+  handleSaveLog = () => {
+    this.setState({ status: helper.saveLog(this.props.type, this.props.consoleLog) },
+      () => { setTimeout(() => this.setState({ status: '(Choose path in Settings)' }), 5000) });
+
+  }
 }

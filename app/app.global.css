@@ -2,6 +2,7 @@
 
 * {
   outline: none;
+  box-sizing: border-box;
 }
 
 body {
@@ -82,17 +83,46 @@ button:hover {
   border-collapse: collapse;
   border-spacing: 0;
 }
+
+.pure-table, tbody {
+  font-size: 12px;
+}
 .pure-table thead {
   background-color: #e0e0e0;
   color: #000;
-  text-align: left;
+  text-align: center;
   vertical-align: bottom;
+  font-size: 14px;
+  border-bottom: 1px solid;
 }
+
+.pure-table tr{
+  vertical-align: 'top';
+  border-right: 'none';
+  border-bottom: '1px solid lightgrey';
+  background-color: #f7f7f7;
+}
+.pure-table tr:nth-child(even){
+  background-color:white;
+}
+
 .pure-table td, .pure-table th {
-  border-left: 1px solid #cbcbcb;
+  white-space: nowrap;
+  text-align: center;
+  border: none;
   border-width: 0 0 0 1px;
   font-size: inherit;
   margin: 0;
   overflow: visible;
   padding: .5em 1em;
+}
+
+#nametd, #uuidtd {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  border: none;
+  width: 70%;
+  max-width: 0;
 }
